@@ -1,10 +1,6 @@
 // Global memory cache to store API data once fetched
 let cachedMarketData = [];
 
-// ==========================================
-// STEP 1: FETCH & MERGE DATA FROM BOTH DBs
-// ==========================================
-
 const AODP_EUROPE_URL = "https://europe.albion-online-data.com/api/v2/stats/prices/"; 
 const ALBIONDB_EUROPE_URL = "https://albiondb.net/api/v1/europe/prices/"; 
 
@@ -14,6 +10,9 @@ function parseApiDate(dateStr) {
   return isNaN(timestamp) || timestamp <= 0 ? 0 : timestamp;
 }
 
+// ==========================================
+// 1. FETCH & MERGE DATA
+// ==========================================
 async function fetchAndMergeData(itemIds) {
   const itemString = itemIds.join(",");
 
@@ -67,34 +66,33 @@ async function fetchAndMergeData(itemIds) {
 }
 
 // ==========================================
-// STEP 2: MAIN RUN FUNCTION (Fetches Data)
+// 2. MAIN FETCH TRIGGER (RUN Button)
 // ==========================================
-
 async function calculateAdvisor() {
   const tableBody = document.getElementById('tableBody');
   tableBody.innerHTML = `<div class="empty-state">Fetching freshest data from APIs...</div>`;
 
+  // Diverse item list to ensure different names & prices show up
   const targetItems = [
-    "T6_MAIN_CLAW", "T8_BAG", "T7_MOUNT_SWIFTCLAW", 
-    "T8_ARMOR_LEATHER_ROYAL", "T5_POTION_HEAL"
+    "T4_BAG", "T5_BAG", "T6_BAG", "T7_BAG", "T8_BAG",
+    "T4_MAIN_CLAW", "T6_MAIN_CLAW", 
+    "T7_MOUNT_SWIFTCLAW", "T8_ARMOR_LEATHER_ROYAL", 
+    "T5_POTION_HEAL"
   ];
 
-  // Store in global cache variable
   cachedMarketData = await fetchAndMergeData(targetItems);
 
   if (cachedMarketData.length === 0) {
-    tableBody.innerHTML = `<div class="empty-state">No valid market data available right now. Try running again shortly.</div>`;
+    tableBody.innerHTML = `<div class="empty-state">No valid market data available right now. Try clicking RUN again shortly.</div>`;
     return;
   }
 
-  // Render the table using cached data
   renderTable();
 }
 
 // ==========================================
-// STEP 3: RENDER & SORT (No API calls!)
+// 3. RENDER & SORT LOCAL DATA
 // ==========================================
-
 function renderTable() {
   const tableBody = document.getElementById('tableBody');
   if (!cachedMarketData || cachedMarketData.length === 0) return;
@@ -106,9 +104,9 @@ function renderTable() {
 
   const activeLocations = Array.from(document.querySelectorAll('#locationToggles input:checked')).map(cb => cb.value);
 
-  // Build trade routes from cachedMarketData
   let tradeRoutes = [];
 
+  // Group market entries by Item ID and Quality
   const itemsGrouped = {};
   cachedMarketData.forEach(entry => {
     const key = `${entry.itemId}_${entry.quality}`;
@@ -116,6 +114,7 @@ function renderTable() {
     itemsGrouped[key].push(entry);
   });
 
+  // Calculate trade routes across different cities
   Object.values(itemsGrouped).forEach(cityList => {
     for (let buyEntry of cityList) {
       for (let sellEntry of cityList) {
@@ -143,22 +142,23 @@ function renderTable() {
     }
   });
 
-  // Sort local array
+  // --- SORTING LOGIC ---
   if (sortBy === 'name') {
     tradeRoutes.sort((a, b) => a.itemId.localeCompare(b.itemId));
   } else if (sortBy === 'lastUpdate') {
-    tradeRoutes.sort((a, b) => b.updatedAt - a.updatedAt);
+    tradeRoutes.sort((a, b) => b.updatedAt - a.updatedAt); // Most recent first
   } else {
-    tradeRoutes.sort((a, b) => b.profitMargin - a.profitMargin);
+    tradeRoutes.sort((a, b) => b.profitMargin - a.profitMargin); // Highest margin first
   }
 
   tableBody.innerHTML = '';
 
   if (tradeRoutes.length === 0) {
-    tableBody.innerHTML = `<div class="empty-state">No matching trade routes found.</div>`;
+    tableBody.innerHTML = `<div class="empty-state">No trade routes match your active location filters.</div>`;
     return;
   }
 
+  // Render sorted rows
   tradeRoutes.forEach((route) => {
     let timeDisplay = "No Recent Data";
     if (route.updatedAt > 0) {
@@ -174,18 +174,23 @@ function renderTable() {
           <div class="item-title">${route.itemId}</div>
           <div class="item-subtext">Quality: ${route.quality}</div>
         </div>
+
         <div><span class="badge-update">${timeDisplay}</span></div>
+
         <div class="price-cell">
           <div class="city-info">${route.fromCity}</div>
           <div class="price-val">${Math.round(route.buyPrice).toLocaleString()} silver</div>
         </div>
+
         <div class="price-cell">
           <div class="city-info">${route.toCity}</div>
           <div class="price-val">${Math.round(route.sellPrice).toLocaleString()} silver</div>
         </div>
+
         <div class="${profitClass}">
           ${Math.round(route.profit).toLocaleString()} silver
         </div>
+
         <div class="margin-val">
           ${route.profitMargin.toFixed(2)} %
         </div>
@@ -195,3 +200,19 @@ function renderTable() {
     tableBody.innerHTML += rowHTML;
   });
 }
+
+// ==========================================
+// 4. ATTACH AUTOMATIC EVENT LISTENERS
+// ==========================================
+document.addEventListener('DOMContentLoaded', () => {
+  // Trigger re-render instantly on filter/sort changes
+  document.getElementById('sortBy')?.addEventListener('change', renderTable);
+  document.getElementById('hasPremium')?.addEventListener('change', renderTable);
+  
+  document.querySelectorAll('input[type="checkbox"]').forEach(checkbox => {
+    checkbox.addEventListener('change', renderTable);
+  });
+
+  // Initial load
+  calculateAdvisor();
+});
