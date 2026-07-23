@@ -18,6 +18,18 @@ function getQualityNumber(val) {
   return Number(val) || 1;
 }
 
+// FORMAT ITEM ID INTO CLEAN READABLE NAME
+function formatItemName(itemId) {
+  if (!itemId) return "";
+  const parts = itemId.split("_");
+  const tier = parts[0]; // e.g., "T6"
+  const nameParts = parts.slice(1).map(part => {
+    if (part.startsWith("SET")) return "Set " + part.replace("SET", "");
+    return part.charAt(0) + part.slice(1).toLowerCase();
+  });
+  return `${tier} ${nameParts.join(" ")}`;
+}
+
 // READ UI FILTERS
 function getUIFilters() {
   const checkboxes = Array.from(document.querySelectorAll('input[type="checkbox"]:checked'));
@@ -47,24 +59,20 @@ function getUIFilters() {
 
 // CATEGORY-BASED ITEM GENERATOR 
 function generateItemIds(tiers) {
-  // Broad item structural roots matching game asset naming conventions
   const weaponCategories = [
     "MAIN_SWORD", "2H_CLAYMORE", "DUALSWORDS", "CARVINGSWORD", "CLARENTBLADE", "KINGMAKER", "GALATINEPAIR", "INFINITYBLADE",
     "MAIN_SPEAR", "SPEAR", "GLAIVE", "PIKE", "SPIRITHUNTER", "HERONSPEAR", "TRINITYSPEAR", "DAYBREAKER", "RIFTGLAIVE",
     "MAIN_BOW", "BOW", "LONGBOW", "WARBOW", "WHISPERINGBOW", "BADONBOW", "WAILINGBOW", "MISTPIERCER", "SKYSTRIDERBOW",
-    "MAIN_SHAPESHIFTER", "2H_SHAPESHIFTER" // Shapeshifter Staff variants
+    "MAIN_SHAPESHIFTER", "2H_SHAPESHIFTER"
   ];
 
   const armorCategories = [
-    // Helmets
     "HEAD_CLOTH_SET1", "HEAD_CLOTH_SET2", "HEAD_CLOTH_SET3", "HEAD_CLOTH_ROYAL",
     "HEAD_LEATHER_SET1", "HEAD_LEATHER_SET2", "HEAD_LEATHER_SET3", "HEAD_LEATHER_ROYAL",
     "HEAD_PLATE_SET1", "HEAD_PLATE_SET2", "HEAD_PLATE_SET3", "HEAD_PLATE_ROYAL",
-    // Chest Armors
     "ARMOR_CLOTH_SET1", "ARMOR_CLOTH_SET2", "ARMOR_CLOTH_SET3", "ARMOR_CLOTH_ROYAL",
     "ARMOR_LEATHER_SET1", "ARMOR_LEATHER_SET2", "ARMOR_LEATHER_SET3", "ARMOR_LEATHER_ROYAL",
     "ARMOR_PLATE_SET1", "ARMOR_PLATE_SET2", "ARMOR_PLATE_SET3", "ARMOR_PLATE_ROYAL",
-    // Shoes
     "SHOES_CLOTH_SET1", "SHOES_CLOTH_SET2", "SHOES_CLOTH_SET3", "SHOES_CLOTH_ROYAL",
     "SHOES_LEATHER_SET1", "SHOES_LEATHER_SET2", "SHOES_LEATHER_SET3", "SHOES_LEATHER_ROYAL",
     "SHOES_PLATE_SET1", "SHOES_PLATE_SET2", "SHOES_PLATE_SET3", "SHOES_PLATE_ROYAL"
@@ -259,16 +267,25 @@ window.renderTable = function() {
     let timeDisplay = "No Recent Data";
     if (route.updatedAt > 0) {
       const minsAgo = Math.floor((Date.now() - route.updatedAt) / 60000);
-      timeDisplay = minsAgo <= 0 ? "Just now" : `${minsAgo} mins ago`;
+      if (minsAgo <= 0) {
+        timeDisplay = "Just now";
+      } else if (minsAgo < 60) {
+        timeDisplay = `${minsAgo}m ago`;
+      } else {
+        const hours = Math.floor(minsAgo / 60);
+        const mins = minsAgo % 60;
+        timeDisplay = `${hours}h ${mins}m ago`;
+      }
     }
 
     const profitClass = route.profit >= 0 ? 'profit-positive' : 'profit-negative';
+    const readableName = formatItemName(route.itemId);
 
     const rowHTML = `
       <div class="table-row">
         <div class="item-title-container">
-          <div class="item-title">${route.itemId}</div>
-          <div class="item-subtext">Quality: ${route.quality}</div>
+          <div class="item-title">${readableName}</div>
+          <div class="item-subtext" style="font-size: 0.75rem; color: #64748b;">ID: ${route.itemId} | Quality: ${route.quality}</div>
         </div>
         <div><span class="badge-update">${timeDisplay}</span></div>
         <div class="price-cell">
