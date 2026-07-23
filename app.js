@@ -1,24 +1,61 @@
-// Global memory cache
+// Global cache for current run
 let cachedMarketData = [];
 
-// Europe API Endpoints
+// API Base URLs for Europe
 const AODP_EUROPE_URL = "https://europe.albion-online-data.com/api/v2/stats/prices/"; 
 const ALBIONDB_EUROPE_URL = "https://albiondb.net/api/v1/europe/prices/"; 
 
+// Date helper
 function parseApiDate(dateStr) {
   if (!dateStr || dateStr.startsWith("0001-01-01")) return 0;
   const timestamp = new Date(dateStr).getTime();
   return isNaN(timestamp) || timestamp <= 0 ? 0 : timestamp;
 }
 
-// 1. FETCH & MERGE DATA
-async function fetchAndMergeData(itemIds) {
+// 1. DYNAMIC ITEM GENERATOR BASED ON FILTERS
+function getRequestedItemsFromUI() {
+  // Grab active Tier checkboxes (e.g., ["T4", "T5", "T6", "T7", "T8"])
+  const selectedTiers = Array.from(document.querySelectorAll('#tierToggles input:checked')).map(cb => cb.value);
+  
+  // Base item types you want your app to analyze (add more Albion item IDs here as needed)
+  const baseItems = [
+    "BAG", "CAPE", "MAIN_CLAW", "MOUNT_SWIFTCLAW", 
+    "ARMOR_LEATHER_ROYAL", "POTION_HEAL", "HEAD_CLOTH_ROYAL"
+  ];
+
+  const generatedItems = [];
+
+  // Generate full item IDs based on selected tiers (e.g. T6_BAG, T8_BAG)
+  selectedTiers.forEach(tier => {
+    baseItems.forEach(base => {
+      // Special case: Mounts or potions might not exist on all tiers, but constructing them handles base equipment
+      if (base === "MOUNT_SWIFTCLAW") {
+        if (tier === "T7") generatedItems.push("T7_MOUNT_SWIFTCLAW");
+      } else {
+        generatedItems.push(`${tier}_${base}`);
+      }
+    });
+  });
+
+  return Array.from(new Set(generatedItems)); // Remove duplicates
+}
+
+// 2. FETCH & MERGE DATA FOR THE SPECIFIED ITEMS
+async function fetchAndMergeData(itemIds, qualities, locations) {
+  if (itemIds.length === 0) return [];
+
   const itemString = itemIds.join(",");
+  const locationString = locations.join(",");
+  const qualityString = qualities.join(",");
 
   try {
+    // Pass query params for locations and qualities to speed up API response
+    const aodpUrl = `${AODP_EUROPE_URL}${itemString}.json?locations=${locationString}&qualities=${qualityString}`;
+    const albionDbUrl = `${ALBIONDB_EUROPE_URL}${itemString}?locations=${locationString}`;
+
     const [aodpResponse, albionDbResponse] = await Promise.all([
-      fetch(`${AODP_EUROPE_URL}${itemString}.json`).catch(() => null),
-      fetch(`${ALBIONDB_EUROPE_URL}${itemString}`).catch(() => null)
+      fetch(aodpUrl).catch(() => null),
+      fetch(albionDbUrl).catch(() => null)
     ]);
 
     const aodpData = aodpResponse && aodpResponse.ok ? await aodpResponse.json() : [];
@@ -49,7 +86,6 @@ async function fetchAndMergeData(itemIds) {
     const combinedData = [...normalizedAODP, ...normalizedAlbionDB];
 
     combinedData.forEach(entry => {
-      // Filter out zero-priced items
       if (entry.buyPrice <= 0 && entry.sellPrice <= 0) return;
       
       const key = `${entry.itemId}_${entry.city}_${entry.quality}`;
@@ -66,32 +102,35 @@ async function fetchAndMergeData(itemIds) {
   }
 }
 
-// 2. FETCH TRIGGER (RUN BUTTON)
+// 3. MAIN RUN TRIGGER
 async function calculateAdvisor() {
   const tableBody = document.getElementById('tableBody');
-  if (tableBody) {
-    tableBody.innerHTML = `<div class="empty-state">Fetching freshest data from APIs...</div>`;
+  tableBody.innerHTML = `<div class="empty-state">Searching databases for matching Tiers, Qualities, and Locations...</div>`;
+
+  // Get active user selections from UI
+  const activeLocations = Array.from(document.querySelectorAll('#locationToggles input:checked')).map(cb => cb.value);
+  const activeQualities = Array.from(document.querySelectorAll('#qualityToggles input:checked')).map(cb => cb.value);
+  
+  // Dynamically generate item list based on checked Tiers
+  const targetItems = getRequestedItemsFromUI();
+
+  if (targetItems.length === 0 || activeLocations.length === 0) {
+    tableBody.innerHTML = `<div class="empty-state">Please check at least one Tier and Location filter!</div>`;
+    return;
   }
 
-  // Sample item list
-  const targetItems = [
-    "T4_BAG", "T5_BAG", "T6_BAG", "T7_BAG", "T8_BAG",
-    "T4_MAIN_CLAW", "T6_MAIN_CLAW", 
-    "T7_MOUNT_SWIFTCLAW", "T8_ARMOR_LEATHER_ROYAL", 
-    "T5_POTION_HEAL"
-  ];
-
-  cachedMarketData = await fetchAndMergeData(targetItems);
+  // Fetch only the items, qualities, and locations selected in UI
+  cachedMarketData = await fetchAndMergeData(targetItems, activeQualities, activeLocations);
 
   if (cachedMarketData.length === 0) {
-    if (tableBody) tableBody.innerHTML = `<div class="empty-state">No valid market data found. Check back in a moment or click RUN.</div>`;
+    tableBody.innerHTML = `<div class="empty-state">No active market data found for selected filters. Try broadening your selection.</div>`;
     return;
   }
 
   renderTable();
 }
 
-// 3. RENDER & SORT LOCAL DATA
+// 4. RENDER & SORT LOCAL DATA
 function renderTable() {
   const tableBody = document.getElementById('tableBody');
   if (!tableBody || !cachedMarketData || cachedMarketData.length === 0) return;
@@ -102,12 +141,16 @@ function renderTable() {
   const setupFee = 0.025;
 
   const activeLocations = Array.from(document.querySelectorAll('#locationToggles input:checked')).map(cb => cb.value);
+  const activeQualities = Array.from(document.querySelectorAll('#qualityToggles input:checked')).map(cb => Number(cb.value));
 
   let tradeRoutes = [];
 
   // Group market entries by item and quality
   const itemsGrouped = {};
   cachedMarketData.forEach(entry => {
+    // Apply Quality Filter
+    if (activeQualities.length > 0 && !activeQualities.includes(entry.quality)) return;
+
     const key = `${entry.itemId}_${entry.quality}`;
     if (!itemsGrouped[key]) itemsGrouped[key] = [];
     itemsGrouped[key].push(entry);
@@ -141,7 +184,7 @@ function renderTable() {
     }
   });
 
-  // Sort logic
+  // Apply Sorting
   if (sortBy === 'name') {
     tradeRoutes.sort((a, b) => a.itemId.localeCompare(b.itemId));
   } else if (sortBy === 'lastUpdate') {
@@ -153,7 +196,7 @@ function renderTable() {
   tableBody.innerHTML = '';
 
   if (tradeRoutes.length === 0) {
-    tableBody.innerHTML = `<div class="empty-state">No matching trade routes for active location filters.</div>`;
+    tableBody.innerHTML = `<div class="empty-state">No matching trade routes found for these filters.</div>`;
     return;
   }
 
@@ -199,14 +242,16 @@ function renderTable() {
   });
 }
 
-// 4. BIND LISTENERS
+// BIND LISTENERS
 document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('sortBy')?.addEventListener('change', renderTable);
   document.getElementById('hasPremium')?.addEventListener('change', renderTable);
   
-  document.querySelectorAll('input[type="checkbox"]').forEach(checkbox => {
+  // Re-render local filters without re-fetching
+  document.querySelectorAll('#qualityToggles input, #locationToggles input').forEach(checkbox => {
     checkbox.addEventListener('change', renderTable);
   });
 
+  // Initial Run
   calculateAdvisor();
 });
