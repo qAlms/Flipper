@@ -1,18 +1,16 @@
-// Global cache memory
+// Global memory cache
 let cachedMarketData = [];
 
-// API Endpoints
+// API Base URLs
 const AODP_EUROPE_URL = "https://europe.albion-online-data.com/api/v2/stats/prices/";
 const ALBIONDB_EUROPE_URL = "https://albiondb.net/api/v1/europe/prices/";
 
-// Helper to handle API dates safely
 function parseApiDate(dateStr) {
   if (!dateStr || dateStr.startsWith("0001-01-01")) return 0;
   const timestamp = new Date(dateStr).getTime();
   return isNaN(timestamp) || timestamp <= 0 ? 0 : timestamp;
 }
 
-// Map quality names to numbers (1-5) if HTML uses text values
 function getQualityNumber(val) {
   const str = String(val).toLowerCase().trim();
   if (str === '1' || str === 'normal') return 1;
@@ -25,10 +23,8 @@ function getQualityNumber(val) {
 
 // 1. GET ACTIVE FILTERS FROM UI
 function getUIFilters() {
-  // Grab all checked checkboxes across the page safely
   const checkboxes = Array.from(document.querySelectorAll('input[type="checkbox"]:checked'));
 
-  // Get selected Tiers
   let tiers = checkboxes
     .map(cb => cb.value.toUpperCase())
     .filter(val => val.startsWith('T') || ['4','5','6','7','8'].includes(val))
@@ -36,14 +32,12 @@ function getUIFilters() {
 
   if (tiers.length === 0) tiers = ["T4", "T5", "T6", "T7", "T8"];
 
-  // Get selected Qualities (mapped to numbers 1-5)
   let qualities = checkboxes
     .map(cb => getQualityNumber(cb.value))
     .filter(val => val >= 1 && val <= 5);
 
   if (qualities.length === 0) qualities = [1, 2, 3, 4, 5];
 
-  // Get selected Locations
   const knownCities = ["Fort Sterling", "Lymhurst", "Bridgewatch", "Martlock", "Thetford", "Caerleon", "Brecilien", "Black Market"];
   let locations = checkboxes
     .map(cb => cb.value)
@@ -51,14 +45,13 @@ function getUIFilters() {
 
   if (locations.length === 0) locations = knownCities;
 
-  // Get Budget
   const budgetInput = document.querySelector('input[type="number"]') || document.getElementById('budget');
   const maxBudget = budgetInput ? Number(budgetInput.value) || Infinity : Infinity;
 
   return { tiers, qualities, locations, maxBudget };
 }
 
-// 2. BUILD ITEM LIST BASED ON TIERS
+// 2. DYNAMIC ITEM ID GENERATOR
 function generateItemIds(tiers) {
   const baseItems = [
     "BAG", "CAPE", "MAIN_CLAW", "MOUNT_SWIFTCLAW", 
@@ -79,75 +72,107 @@ function generateItemIds(tiers) {
   return Array.from(new Set(items));
 }
 
-// 3. FETCH & MERGE DATA
-async function fetchAndMergeData(itemIds) {
+// 3. FETCH DATA IN BATCHES WITH LIVE % PROGRESS
+async function fetchAndMergeDataInBatches(itemIds, updateProgressCallback) {
   if (itemIds.length === 0) return [];
 
-  const itemString = itemIds.join(",");
-
-  try {
-    const [aodpResponse, albionDbResponse] = await Promise.all([
-      fetch(`${AODP_EUROPE_URL}${encodeURIComponent(itemString)}.json`).catch(() => null),
-      fetch(`${ALBIONDB_EUROPE_URL}${encodeURIComponent(itemString)}`).catch(() => null)
-    ]);
-
-    const aodpData = aodpResponse && aodpResponse.ok ? await aodpResponse.json() : [];
-    const albionDbData = albionDbResponse && albionDbResponse.ok ? await albionDbResponse.json() : [];
-
-    const normalizedAODP = aodpData.map(item => ({
-      itemId: item.item_id,
-      city: item.city,
-      quality: item.quality,
-      buyPrice: item.sell_price_min || 0,
-      sellPrice: item.buy_price_max || 0,
-      updatedAt: Math.max(
-        parseApiDate(item.sell_price_min_date),
-        parseApiDate(item.buy_price_max_date)
-      )
-    }));
-
-    const normalizedAlbionDB = albionDbData.map(item => ({
-      itemId: item.item_id || item.itemId,
-      city: item.city,
-      quality: item.quality,
-      buyPrice: item.sell_price_min || item.buyPrice || 0,
-      sellPrice: item.buy_price_max || item.sellPrice || 0,
-      updatedAt: parseApiDate(item.updated_at || item.updatedAt)
-    }));
-
-    const freshestMap = new Map();
-    const combinedData = [...normalizedAODP, ...normalizedAlbionDB];
-
-    combinedData.forEach(entry => {
-      if (entry.buyPrice <= 0 && entry.sellPrice <= 0) return;
-      const key = `${entry.itemId}_${entry.city}_${entry.quality}`;
-      if (!freshestMap.has(key) || entry.updatedAt > freshestMap.get(key).updatedAt) {
-        freshestMap.set(key, entry);
-      }
-    });
-
-    return Array.from(freshestMap.values());
-
-  } catch (error) {
-    console.error("Error fetching market data:", error);
-    return [];
+  // Split items into small batches of 5 to avoid URI length/API limits
+  const BATCH_SIZE = 5;
+  const batches = [];
+  for (let i = 0; i < itemIds.length; i += BATCH_SIZE) {
+    batches.push(itemIds.slice(i, i + BATCH_SIZE));
   }
+
+  let allResults = [];
+  let completedBatches = 0;
+
+  for (const batch of batches) {
+    const itemString = batch.join(",");
+
+    try {
+      const [aodpResponse, albionDbResponse] = await Promise.all([
+        fetch(`${AODP_EUROPE_URL}${encodeURIComponent(itemString)}.json`).catch(() => null),
+        fetch(`${ALBIONDB_EUROPE_URL}${encodeURIComponent(itemString)}`).catch(() => null)
+      ]);
+
+      const aodpData = aodpResponse && aodpResponse.ok ? await aodpResponse.json() : [];
+      const albionDbData = albionDbResponse && albionDbResponse.ok ? await albionDbResponse.json() : [];
+
+      const normalizedAODP = aodpData.map(item => ({
+        itemId: item.item_id,
+        city: item.city,
+        quality: item.quality,
+        buyPrice: item.sell_price_min || 0,
+        sellPrice: item.buy_price_max || 0,
+        updatedAt: Math.max(
+          parseApiDate(item.sell_price_min_date),
+          parseApiDate(item.buy_price_max_date)
+        )
+      }));
+
+      const normalizedAlbionDB = albionDbData.map(item => ({
+        itemId: item.item_id || item.itemId,
+        city: item.city,
+        quality: item.quality,
+        buyPrice: item.sell_price_min || item.buyPrice || 0,
+        sellPrice: item.buy_price_max || item.sellPrice || 0,
+        updatedAt: parseApiDate(item.updated_at || item.updatedAt)
+      }));
+
+      allResults.push(...normalizedAODP, ...normalizedAlbionDB);
+
+    } catch (err) {
+      console.error("Batch fetch error:", err);
+    }
+
+    completedBatches++;
+    const percent = Math.round((completedBatches / batches.length) * 100);
+    if (updateProgressCallback) updateProgressCallback(percent, completedBatches, batches.length);
+  }
+
+  // Deduplicate and retain freshest records
+  const freshestMap = new Map();
+  allResults.forEach(entry => {
+    if (entry.buyPrice <= 0 && entry.sellPrice <= 0) return;
+    const key = `${entry.itemId}_${entry.city}_${entry.quality}`;
+    if (!freshestMap.has(key) || entry.updatedAt > freshestMap.get(key).updatedAt) {
+      freshestMap.set(key, entry);
+    }
+  });
+
+  return Array.from(freshestMap.values());
 }
 
 // 4. MAIN RUN BUTTON TRIGGER
 async function calculateAdvisor() {
   const tableBody = document.getElementById('tableBody');
-  if (tableBody) {
-    tableBody.innerHTML = `<div class="empty-state" style="padding: 20px; text-align: center; color: #aaa;">Searching databases for matching market entries...</div>`;
-  }
-
   const { tiers } = getUIFilters();
   const targetItems = generateItemIds(tiers);
 
-  cachedMarketData = await fetchAndMergeData(targetItems);
+  if (tableBody) {
+    tableBody.innerHTML = `
+      <div style="padding: 30px; text-align: center; color: #4ba3e3;">
+        <div style="font-size: 1.2rem; font-weight: bold; margin-bottom: 8px;">
+          Searching Databases: <span id="searchPercent">0%</span>
+        </div>
+        <div style="color: #aaa; font-size: 0.9rem;">
+          Querying <span id="searchBatches">0/0</span> item batches...
+        </div>
+      </div>
+    `;
+  }
+
+  cachedMarketData = await fetchAndMergeDataInBatches(targetItems, (percent, done, total) => {
+    const percentEl = document.getElementById('searchPercent');
+    const batchesEl = document.getElementById('searchBatches');
+    if (percentEl) percentEl.textContent = `${percent}%`;
+    if (batchesEl) batchesEl.textContent = `${done}/${total}`;
+  });
 
   if (!cachedMarketData || cachedMarketData.length === 0) {
-    if (tableBody) tableBody.innerHTML = `<div class="empty-state" style="padding: 20px; text-align: center; color: #aaa;">No live market data found. Try clicking RUN again.</div>`;
+    if (tableBody) {
+      tableBody.innerHTML = `<div class="empty-state" style="padding: 20px; text-align: center; color: #aaa;">No active market prices found in databases. Try clicking RUN again.</div>`;
+    }
     return;
   }
 
@@ -169,32 +194,25 @@ function renderTable() {
 
   let tradeRoutes = [];
 
-  // Group market entries by item ID and Quality
   const itemsGrouped = {};
   cachedMarketData.forEach(entry => {
-    // Quality Filter
     if (!qualities.includes(Number(entry.quality))) return;
-
     const key = `${entry.itemId}_${entry.quality}`;
     if (!itemsGrouped[key]) itemsGrouped[key] = [];
     itemsGrouped[key].push(entry);
   });
 
-  // Calculate trade routes across cities
   Object.values(itemsGrouped).forEach(cityList => {
     for (let buyEntry of cityList) {
       for (let sellEntry of cityList) {
         if (buyEntry.city === sellEntry.city) continue;
         if (buyEntry.buyPrice <= 0 || sellEntry.sellPrice <= 0) continue;
 
-        // Location Filter
         const buyCityMatch = locations.some(l => l.toLowerCase() === buyEntry.city.toLowerCase());
         const sellCityMatch = locations.some(l => l.toLowerCase() === sellEntry.city.toLowerCase());
         if (!buyCityMatch || !sellCityMatch) continue;
 
         const totalCost = buyEntry.buyPrice * (1 + setupFee);
-
-        // Budget Filter (Skip if item exceeds budget)
         if (totalCost > maxBudget) continue;
 
         const netRevenue = sellEntry.sellPrice * (1 - setupFee - taxRate);
@@ -216,7 +234,6 @@ function renderTable() {
     }
   });
 
-  // Sorting logic
   if (sortBy === 'name') {
     tradeRoutes.sort((a, b) => a.itemId.localeCompare(b.itemId));
   } else if (sortBy === 'lastUpdate') {
@@ -228,11 +245,10 @@ function renderTable() {
   tableBody.innerHTML = '';
 
   if (tradeRoutes.length === 0) {
-    tableBody.innerHTML = `<div class="empty-state" style="padding: 20px; text-align: center; color: #aaa;">No profitable trade routes match your active filters and budget.</div>`;
+    tableBody.innerHTML = `<div class="empty-state" style="padding: 20px; text-align: center; color: #aaa;">No matching trade routes found for your current filters/budget.</div>`;
     return;
   }
 
-  // Render rows
   tradeRoutes.forEach((route) => {
     let timeDisplay = "No Recent Data";
     if (route.updatedAt > 0) {
@@ -275,21 +291,18 @@ function renderTable() {
   });
 }
 
-// 6. BIND AUTOMATIC LISTENERS
+// 6. EVENT LISTENERS
 document.addEventListener('DOMContentLoaded', () => {
-  // Bind inputs and dropdowns to update local table view
   document.querySelectorAll('select, input').forEach(element => {
     if (element.type === 'button' || element.tagName === 'BUTTON') return;
     element.addEventListener('change', renderTable);
     element.addEventListener('input', renderTable);
   });
 
-  // RUN Button trigger
   const runBtn = document.querySelector('button') || document.querySelector('.btn-run');
   if (runBtn) {
     runBtn.addEventListener('click', calculateAdvisor);
   }
 
-  // Initial fetch on page load
   calculateAdvisor();
 });
