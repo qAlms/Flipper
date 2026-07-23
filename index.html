@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Albion Advisor - Full Screen Wireframe</title>
+  <title>Albion Helper</title>
   <style>
     :root {
       --bg-dark: #0f172a;
@@ -13,8 +13,19 @@
       --accent-gold-hover: #d97706;
       --accent-green: #10b981;
       --accent-red: #ef4444;
+      --accent-blue: #3b82f6;
       --text-main: #f8fafc;
       --text-muted: #94a3b8;
+
+      /* City Specific Toggle Colors */
+      --color-fort-sterling: #94a3b8;
+      --color-lymhurst: #4ade80;
+      --color-bridgewatch: #f97316;
+      --color-martlock: #3b82f6;
+      --color-thetford: #a855f7;
+      --color-caerleon: #ef4444;
+      --color-brecilien: #06b6d4;
+      --color-black-market: #64748b;
     }
 
     * {
@@ -40,7 +51,7 @@
       grid-template-areas: 
         "header header"
         "sidebar main-cols";
-      grid-template-columns: 280px 1fr;
+      grid-template-columns: 320px 1fr;
       grid-template-rows: 60px 1fr;
     }
 
@@ -85,7 +96,7 @@
       display: flex;
       align-items: center;
       padding: 0 20px;
-      font-size: 1.2rem;
+      font-size: 1.3rem;
       font-weight: bold;
       color: var(--accent-gold);
     }
@@ -104,16 +115,18 @@
     .input-label-group {
       display: flex;
       flex-direction: column;
-      gap: 6px;
+      gap: 8px;
     }
 
-    .input-label-group label {
-      font-size: 0.85rem;
-      color: var(--text-muted);
-      font-weight: 600;
+    .input-label-group label.group-title {
+      font-size: 0.9rem;
+      color: var(--text-main);
+      font-weight: 700;
+      letter-spacing: 0.5px;
     }
 
-    .checkbox-group {
+    /* Custom Toggle Switch Styling */
+    .toggle-list {
       display: flex;
       flex-direction: column;
       gap: 8px;
@@ -121,25 +134,71 @@
       padding: 10px;
       border: 1px solid var(--panel-border);
       border-radius: 6px;
-      max-height: 220px;
-      overflow-y: auto;
     }
 
-    .checkbox-item {
+    .toggle-item {
       display: flex;
       align-items: center;
-      gap: 8px;
+      gap: 10px;
       font-size: 0.85rem;
       cursor: pointer;
+      user-select: none;
       color: var(--text-main);
     }
 
-    .checkbox-item input[type="checkbox"] {
-      accent-color: var(--accent-gold);
-      width: 16px;
-      height: 16px;
-      cursor: pointer;
+    .switch {
+      position: relative;
+      display: inline-block;
+      width: 36px;
+      height: 20px;
+      flex-shrink: 0;
     }
+
+    .switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+
+    .slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background-color: #334155;
+      transition: .2s;
+      border-radius: 20px;
+    }
+
+    .slider:before {
+      position: absolute;
+      content: "";
+      height: 14px;
+      width: 14px;
+      left: 3px;
+      bottom: 3px;
+      background-color: white;
+      transition: .2s;
+      border-radius: 50%;
+    }
+
+    /* Generic Blue Active Toggle */
+    input:checked + .slider {
+      background-color: var(--accent-blue);
+    }
+
+    input:checked + .slider:before {
+      transform: translateX(16px);
+    }
+
+    /* City Specific Active Colors */
+    input[data-city="Fort Sterling"]:checked + .slider { background-color: var(--color-fort-sterling); }
+    input[data-city="Lymhurst"]:checked + .slider { background-color: var(--color-lymhurst); }
+    input[data-city="Bridgewatch"]:checked + .slider { background-color: var(--color-bridgewatch); }
+    input[data-city="Martlock"]:checked + .slider { background-color: var(--color-martlock); }
+    input[data-city="Thetford"]:checked + .slider { background-color: var(--color-thetford); }
+    input[data-city="Caerleon"]:checked + .slider { background-color: var(--color-caerleon); }
+    input[data-city="Brecilien"]:checked + .slider { background-color: var(--color-brecilien); }
+    input[data-city="Black Market"]:checked + .slider { background-color: var(--color-black-market); }
 
     #runBtn { 
       width: 100%;
@@ -167,20 +226,21 @@
     }
 
     .scrollable-cards-container::-webkit-scrollbar,
-    .checkbox-group::-webkit-scrollbar {
+    aside.sketch-sidebar::-webkit-scrollbar {
       width: 8px;
     }
     .scrollable-cards-container::-webkit-scrollbar-track,
-    .checkbox-group::-webkit-scrollbar-track {
+    aside.sketch-sidebar::-webkit-scrollbar-track {
       background: var(--bg-dark);
       border-radius: 6px;
     }
     .scrollable-cards-container::-webkit-scrollbar-thumb,
-    .checkbox-group::-webkit-scrollbar-thumb {
+    aside.sketch-sidebar::-webkit-scrollbar-thumb {
       background: var(--panel-border);
       border-radius: 6px;
     }
-    .scrollable-cards-container::-webkit-scrollbar-thumb:hover {
+    .scrollable-cards-container::-webkit-scrollbar-thumb:hover,
+    aside.sketch-sidebar::-webkit-scrollbar-thumb:hover {
       background: var(--accent-gold);
     }
 
@@ -222,20 +282,6 @@
     .profit-positive { color: var(--accent-green); }
     .profit-negative { color: var(--accent-red); }
 
-    .retry-area {
-      display: flex;
-      justify-content: flex-start;
-      padding-top: 15px;
-      border-top: 1px solid var(--panel-border);
-      margin-top: 10px;
-    }
-
-    #retryBtn {
-      width: 140px;
-      height: 42px;
-      font-size: 0.95rem;
-    }
-
     .empty-state {
       grid-column: 1 / -1;
       text-align: center;
@@ -250,35 +296,114 @@
   <div class="wireframe-container">
     
     <header class="sketch-header">
-      ⚔️ Albion Advisor — Market & Trade Route Assistant
+      Albion Helper
     </header>
 
     <aside class="sketch-sidebar">
       <div class="input-label-group">
-        <label for="budget">Budget (Silver):</label>
+        <label for="budget" class="group-title">Budget (Silver):</label>
         <input type="number" id="budget" name="budget" value="1000000" oninput="calculateAdvisor();">
       </div>
 
       <!-- Premium Status Dropdown -->
       <div class="input-label-group">
-        <label for="hasPremium">Premium Status:</label>
+        <label for="hasPremium" class="group-title">Premium Status:</label>
         <select id="hasPremium" onchange="calculateAdvisor();">
           <option value="true" selected>Active Premium (4% Tax)</option>
           <option value="false">No Premium (8% Tax)</option>
         </select>
       </div>
 
+      <!-- Locations Toggle Group -->
       <div class="input-label-group">
-        <label>Blacklist Locations (Multiple):</label>
-        <div class="checkbox-group" id="blacklistContainer">
-          <label class="checkbox-item"><input type="checkbox" value="Caerleon" onchange="calculateAdvisor()"> Caerleon</label>
-          <label class="checkbox-item"><input type="checkbox" value="Black Market" onchange="calculateAdvisor()"> Black Market</label>
-          <label class="checkbox-item"><input type="checkbox" value="Bridgewatch" onchange="calculateAdvisor()"> Bridgewatch</label>
-          <label class="checkbox-item"><input type="checkbox" value="Fort Sterling" onchange="calculateAdvisor()"> Fort Sterling</label>
-          <label class="checkbox-item"><input type="checkbox" value="Lymhurst" onchange="calculateAdvisor()"> Lymhurst</label>
-          <label class="checkbox-item"><input type="checkbox" value="Martlock" onchange="calculateAdvisor()"> Martlock</label>
-          <label class="checkbox-item"><input type="checkbox" value="Thetford" onchange="calculateAdvisor()"> Thetford</label>
-          <label class="checkbox-item"><input type="checkbox" value="Brecilien" onchange="calculateAdvisor()"> Brecilien</label>
+        <label class="group-title">Locations</label>
+        <div class="toggle-list" id="locationToggles">
+          <label class="toggle-item">
+            <span class="switch"><input type="checkbox" value="Fort Sterling" data-city="Fort Sterling" onchange="calculateAdvisor()"> <span class="slider"></span></span>
+            Fort Sterling
+          </label>
+          <label class="toggle-item">
+            <span class="switch"><input type="checkbox" value="Lymhurst" data-city="Lymhurst" checked onchange="calculateAdvisor()"> <span class="slider"></span></span>
+            Lymhurst
+          </label>
+          <label class="toggle-item">
+            <span class="switch"><input type="checkbox" value="Bridgewatch" data-city="Bridgewatch" checked onchange="calculateAdvisor()"> <span class="slider"></span></span>
+            Bridgewatch
+          </label>
+          <label class="toggle-item">
+            <span class="switch"><input type="checkbox" value="Martlock" data-city="Martlock" checked onchange="calculateAdvisor()"> <span class="slider"></span></span>
+            Martlock
+          </label>
+          <label class="toggle-item">
+            <span class="switch"><input type="checkbox" value="Thetford" data-city="Thetford" checked onchange="calculateAdvisor()"> <span class="slider"></span></span>
+            Thetford
+          </label>
+          <label class="toggle-item">
+            <span class="switch"><input type="checkbox" value="Caerleon" data-city="Caerleon" checked onchange="calculateAdvisor()"> <span class="slider"></span></span>
+            Caerleon
+          </label>
+          <label class="toggle-item">
+            <span class="switch"><input type="checkbox" value="Brecilien" data-city="Brecilien" checked onchange="calculateAdvisor()"> <span class="slider"></span></span>
+            Brecilien
+          </label>
+          <label class="toggle-item">
+            <span class="switch"><input type="checkbox" value="Black Market" data-city="Black Market" onchange="calculateAdvisor()"> <span class="slider"></span></span>
+            Black Market
+          </label>
+        </div>
+      </div>
+
+      <!-- Qualities Toggle Group -->
+      <div class="input-label-group">
+        <label class="group-title">Qualities</label>
+        <div class="toggle-list" id="qualityToggles">
+          <label class="toggle-item">
+            <span class="switch"><input type="checkbox" value="Normal" checked onchange="calculateAdvisor()"> <span class="slider"></span></span>
+            Normal
+          </label>
+          <label class="toggle-item">
+            <span class="switch"><input type="checkbox" value="Good" checked onchange="calculateAdvisor()"> <span class="slider"></span></span>
+            Good
+          </label>
+          <label class="toggle-item">
+            <span class="switch"><input type="checkbox" value="Outstanding" checked onchange="calculateAdvisor()"> <span class="slider"></span></span>
+            Outstanding
+          </label>
+          <label class="toggle-item">
+            <span class="switch"><input type="checkbox" value="Excellent" checked onchange="calculateAdvisor()"> <span class="slider"></span></span>
+            Excellent
+          </label>
+          <label class="toggle-item">
+            <span class="switch"><input type="checkbox" value="Masterpiece" checked onchange="calculateAdvisor()"> <span class="slider"></span></span>
+            Masterpiece
+          </label>
+        </div>
+      </div>
+
+      <!-- Tier Toggle Group -->
+      <div class="input-label-group">
+        <label class="group-title">Tier</label>
+        <div class="toggle-list" id="tierToggles">
+          <label class="toggle-item">
+            <span class="switch"><input type="checkbox" value="T4" checked onchange="calculateAdvisor()"> <span class="slider"></span></span>
+            T4
+          </label>
+          <label class="toggle-item">
+            <span class="switch"><input type="checkbox" value="T5" checked onchange="calculateAdvisor()"> <span class="slider"></span></span>
+            T5
+          </label>
+          <label class="toggle-item">
+            <span class="switch"><input type="checkbox" value="T6" checked onchange="calculateAdvisor()"> <span class="slider"></span></span>
+            T6
+          </label>
+          <label class="toggle-item">
+            <span class="switch"><input type="checkbox" value="T7" checked onchange="calculateAdvisor()"> <span class="slider"></span></span>
+            T7
+          </label>
+          <label class="toggle-item">
+            <span class="switch"><input type="checkbox" value="T8" checked onchange="calculateAdvisor()"> <span class="slider"></span></span>
+            T8
+          </label>
         </div>
       </div>
 
@@ -287,22 +412,20 @@
 
     <main class="sketch-main-cols">
       <div class="scrollable-cards-container" id="cardsWrapper"></div>
-
-      <div class="retry-area">
-        <button id="retryBtn" class="advisor-btn" onclick="calculateAdvisor();">RETRY</button>
-      </div>
     </main>
   </div>
 
   <script>
+    // Expanded master dataset with Tier and Quality properties
     const masterRoutesData = [
-      { itemName: "T6.1 Claws", from: "Caerleon", to: "Martlock", buy: 22000, sell: 31000, availableBandQty: 45 },
-      { itemName: "T8 Grandmaster Bag", from: "Lymhurst", to: "Black Market", buy: 150000, sell: 195000, availableBandQty: 8 },
-      { itemName: "T7 Swiftclaw", from: "Bridgewatch", to: "Fort Sterling", buy: 120000, sell: 142000, availableBandQty: 15 },
-      { itemName: "T8.3 Royal Jacket", from: "Brecilien", to: "Caerleon", buy: 1200000, sell: 1480000, availableBandQty: 2 },
-      { itemName: "T5 Poison Potion", from: "Martlock", to: "Lymhurst", buy: 1200, sell: 1750, availableBandQty: 850 },
-      { itemName: "T6 Bloodletter", from: "Fort Sterling", to: "Black Market", buy: 45000, sell: 62000, availableBandQty: 22 },
-      { itemName: "T7 Pork Omelette", from: "Thetford", to: "Brecilien", buy: 3400, sell: 4900, availableBandQty: 300 }
+      { itemName: "T6.1 Claws", tier: "T6", quality: "Normal", from: "Caerleon", to: "Martlock", buy: 22000, sell: 31000, availableBandQty: 45 },
+      { itemName: "T8 Grandmaster Bag", tier: "T8", quality: "Good", from: "Lymhurst", to: "Black Market", buy: 150000, sell: 195000, availableBandQty: 8 },
+      { itemName: "T7 Swiftclaw", tier: "T7", quality: "Outstanding", from: "Bridgewatch", to: "Fort Sterling", buy: 120000, sell: 142000, availableBandQty: 15 },
+      { itemName: "T8.3 Royal Jacket", tier: "T8", quality: "Masterpiece", from: "Brecilien", to: "Caerleon", buy: 1200000, sell: 1480000, availableBandQty: 2 },
+      { itemName: "T5 Poison Potion", tier: "T5", quality: "Normal", from: "Martlock", to: "Lymhurst", buy: 1200, sell: 1750, availableBandQty: 850 },
+      { itemName: "T6 Bloodletter", tier: "T6", quality: "Excellent", from: "Fort Sterling", to: "Black Market", buy: 45000, sell: 62000, availableBandQty: 22 },
+      { itemName: "T7 Pork Omelette", tier: "T7", quality: "Normal", from: "Thetford", to: "Brecilien", buy: 3400, sell: 4900, availableBandQty: 300 },
+      { itemName: "T4 Scholar Robe", tier: "T4", quality: "Good", from: "Bridgewatch", to: "Thetford", buy: 8000, sell: 12500, availableBandQty: 50 }
     ];
 
     function toRoman(num) {
@@ -321,23 +444,35 @@
       const budgetVal = parseFloat(document.getElementById('budget').value) || 0;
       const isPremium = document.getElementById('hasPremium').value === 'true';
       
-      const checkedBoxes = document.querySelectorAll('#blacklistContainer input[type="checkbox"]:checked');
-      const blacklistedCities = Array.from(checkedBoxes).map(cb => cb.value);
+      // Get active location toggles
+      const activeLocationInputs = document.querySelectorAll('#locationToggles input[type="checkbox"]:checked');
+      const activeLocations = Array.from(activeLocationInputs).map(cb => cb.value);
 
+      // Get active quality toggles
+      const activeQualityInputs = document.querySelectorAll('#qualityToggles input[type="checkbox"]:checked');
+      const activeQualities = Array.from(activeQualityInputs).map(cb => cb.value);
+
+      // Get active tier toggles
+      const activeTierInputs = document.querySelectorAll('#tierToggles input[type="checkbox"]:checked');
+      const activeTiers = Array.from(activeTierInputs).map(cb => cb.value);
+
+      // Both origin AND destination must be in active locations list
       const validRoutes = masterRoutesData.filter(route => {
-        return !blacklistedCities.includes(route.from) && !blacklistedCities.includes(route.to);
+        const isLocationValid = activeLocations.includes(route.from) && activeLocations.includes(route.to);
+        const isQualityValid = activeQualities.includes(route.quality);
+        const isTierValid = activeTiers.includes(route.tier);
+        return isLocationValid && isQualityValid && isTierValid;
       });
 
       const cardsWrapper = document.getElementById('cardsWrapper');
       cardsWrapper.innerHTML = ''; 
 
       if (validRoutes.length === 0) {
-        cardsWrapper.innerHTML = `<div class="empty-state">No trade routes found matching your criteria. Try unchecking some blacklisted cities!</div>`;
+        cardsWrapper.innerHTML = `<div class="empty-state">No trade routes found matching your criteria. Try enabling more locations, qualities, or tiers!</div>`;
         return;
       }
 
       const setupFeeRate = 0.025;
-      // Tax rate set based on Premium status: 4% for Premium, 8% for Non-Premium
       const salesTaxRate = isPremium ? 0.04 : 0.08;
 
       validRoutes.forEach((route, index) => {
