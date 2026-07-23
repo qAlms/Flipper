@@ -17,7 +17,7 @@ function getQualityNumber(val) {
   return Number(val) || 1;
 }
 
-// 1. READ UI FILTERS
+// READ UI FILTERS
 function getUIFilters() {
   const checkboxes = Array.from(document.querySelectorAll('input[type="checkbox"]:checked'));
 
@@ -42,13 +42,13 @@ function getUIFilters() {
   if (locations.length === 0) locations = knownCities;
 
   // Budget
-  const budgetInput = document.querySelector('input[type="number"]') || document.getElementById('budget');
+  const budgetInput = document.getElementById('budget') || document.querySelector('input[type="number"]');
   const maxBudget = budgetInput ? Number(budgetInput.value) || Infinity : Infinity;
 
   return { tiers, qualities, locations, maxBudget };
 }
 
-// 2. GENERATE ITEM IDS
+// GENERATE ITEM IDS BASED ON CHECKED TIERS
 function generateItemIds(tiers) {
   const baseItems = [
     "BAG", "CAPE", "MAIN_CLAW", "MOUNT_SWIFTCLAW", 
@@ -67,7 +67,7 @@ function generateItemIds(tiers) {
   return Array.from(new Set(items));
 }
 
-// 3. FAST PARALLEL FETCH (ONLY TRIGGERS WHEN RUN IS CLICKED)
+// FETCH DATA FROM API
 async function fetchAndMergeData(itemIds, progressCallback) {
   if (itemIds.length === 0) return [];
 
@@ -84,7 +84,7 @@ async function fetchAndMergeData(itemIds, progressCallback) {
     const requestUrl = `${AODP_EUROPE_URL}${itemString}.json`;
 
     try {
-      const response = await fetch(requestUrl, { signal: AbortSignal.timeout(3000) });
+      const response = await fetch(requestUrl);
       if (response.ok) {
         const data = await response.json();
         completed++;
@@ -99,7 +99,7 @@ async function fetchAndMergeData(itemIds, progressCallback) {
         }));
       }
     } catch (err) {
-      // Ignore batch timeout or error
+      console.warn("API batch fetch error:", err);
     }
     completed++;
     if (progressCallback) progressCallback(Math.round((completed / batches.length) * 100), completed, batches.length);
@@ -121,7 +121,7 @@ async function fetchAndMergeData(itemIds, progressCallback) {
   return Array.from(freshestMap.values());
 }
 
-// 4. RUN BUTTON EXECUTION (ONLY METHOD THAT FETCHES FROM API)
+// MAIN RUN FUNCTION (ONLY TRIGGERS EVERYTHING WHEN BUTTON IS CLICKED)
 window.calculateAdvisor = async function() {
   const tableBody = document.getElementById('tableBody');
   const { tiers } = getUIFilters();
@@ -129,44 +129,48 @@ window.calculateAdvisor = async function() {
 
   if (tableBody) {
     tableBody.innerHTML = `
-      <div style="padding: 30px; text-align: center; color: #ffb74d;">
+      <div style="padding: 40px; text-align: center; color: #f59e0b;">
         <div style="font-size: 1.2rem; font-weight: bold; margin-bottom: 8px;">
-          Querying Albion Europe Database: <span id="searchPercent">0%</span>
+          Searching Albion Europe Database: <span id="searchPercent">0%</span>
         </div>
-        <div style="color: #aaa; font-size: 0.9rem;">
+        <div style="color: #94a3b8; font-size: 0.9rem;">
           Batch progress: <span id="searchBatches">0/${Math.ceil(targetItems.length / 4)}</span>
         </div>
       </div>
     `;
   }
 
-  // Fetch new data from network
-  window.cachedMarketData = await fetchAndMergeData(targetItems, (percent, done, total) => {
-    const percentEl = document.getElementById('searchPercent');
-    const batchesEl = document.getElementById('searchBatches');
-    if (percentEl) percentEl.textContent = `${percent}%`;
-    if (batchesEl) batchesEl.textContent = `${done}/${total}`;
-  });
+  try {
+    window.cachedMarketData = await fetchAndMergeData(targetItems, (percent, done, total) => {
+      const percentEl = document.getElementById('searchPercent');
+      const batchesEl = document.getElementById('searchBatches');
+      if (percentEl) percentEl.textContent = `${percent}%`;
+      if (batchesEl) batchesEl.textContent = `${done}/${total}`;
+    });
+  } catch (e) {
+    console.error("Failed to fetch data:", e);
+  }
 
   renderTable();
 };
 
-// 5. RENDER TABLE LOCALLY (LOCAL FILTERING & SORTING ONLY)
+// RENDER TABLE FROM CACHED DATA
 window.renderTable = function() {
   const tableBody = document.getElementById('tableBody');
   if (!tableBody) return;
 
   if (!window.cachedMarketData || window.cachedMarketData.length === 0) {
-    tableBody.innerHTML = `<div class="empty-state" style="padding: 40px; text-align: center; color: #aaa;">Click <strong>RUN</strong> above to search for current market deals.</div>`;
+    tableBody.innerHTML = `<div style="padding: 40px; text-align: center; color: #94a3b8;">Click <strong>RUN</strong> above to search for market deals.</div>`;
     return;
   }
 
   const isPremium = document.getElementById('hasPremium')?.value === 'true' || 
-                    document.querySelector('select')?.value?.includes('4%');
+                    document.getElementById('hasPremium')?.value?.includes('4%');
   const sortBy = document.getElementById('sortBy')?.value || 'margin';
   const taxRate = isPremium ? 0.04 : 0.08;
   const setupFee = 0.025;
 
+  // Reads the inputs at the exact moment the table is rendered
   const { qualities, locations, maxBudget } = getUIFilters();
 
   let tradeRoutes = [];
@@ -222,7 +226,7 @@ window.renderTable = function() {
   tableBody.innerHTML = '';
 
   if (tradeRoutes.length === 0) {
-    tableBody.innerHTML = `<div class="empty-state" style="padding: 20px; text-align: center; color: #aaa;">No matching trade routes found for your active filters/budget limit.</div>`;
+    tableBody.innerHTML = `<div style="padding: 40px; text-align: center; color: #94a3b8;">No trade routes match your current active filters/budget.</div>`;
     return;
   }
 
@@ -258,23 +262,16 @@ window.renderTable = function() {
   });
 };
 
-// 6. EVENT LISTENERS
+// INITIALIZATION
 document.addEventListener('DOMContentLoaded', () => {
-  // Checkboxes & inputs update the UI filter on existing data only
-  document.querySelectorAll('input, select').forEach(element => {
-    if (element.tagName === 'BUTTON') return;
-    element.addEventListener('change', () => {
-      window.renderTable();
+  // Bind ONLY the Run Button
+  const runBtn = document.getElementById('runBtn');
+  if (runBtn) {
+    runBtn.addEventListener('click', () => {
+      window.calculateAdvisor();
     });
-    element.addEventListener('input', () => {
-      window.renderTable();
-    });
-  });
+  }
 
-  // RUN Button triggers network fetch
-  const runBtn = document.querySelector('button') || document.querySelector('.btn-run') || document.getElementById('runBtn');
-  if (runBtn) runBtn.addEventListener('click', window.calculateAdvisor);
-
-  // Display initial empty placeholder state
+  // Show default empty message on load
   window.renderTable();
 });
