@@ -3,11 +3,8 @@ const AODP_EUROPE_URL = "https://europe.albion-online-data.com/api/v2/stats/pric
 
 function parseApiDate(dateStr) {
   if (!dateStr || dateStr.startsWith("0001-01-01")) return 0;
-  
-  // Force the browser to read the time as UTC by appending 'Z'
   const utcDateStr = dateStr.endsWith('Z') ? dateStr : dateStr + 'Z';
   const timestamp = new Date(utcDateStr).getTime();
-  
   return isNaN(timestamp) || timestamp <= 0 ? 0 : timestamp;
 }
 
@@ -48,17 +45,24 @@ function getUIFilters() {
   return { tiers, qualities, locations, maxBudget };
 }
 
-// GENERATE ITEM IDS
+// EXPANDED ITEM GENERATOR FOR BETTER MARKET COVERAGE
 function generateItemIds(tiers) {
   const baseItems = [
-    "BAG", "CAPE", "MAIN_CLAW", "MOUNT_SWIFTCLAW", 
-    "ARMOR_LEATHER_ROYAL", "POTION_HEAL", "HEAD_CLOTH_ROYAL", "SHOES_LEATHER_ROYAL"
+    "BAG", "CAPE", "POTION_HEAL", "POTION_ENERGY", "FOOD_STEW", "FOOD_SALAD",
+    "MAIN_SWORD", "2H_CLAYMORE", "MAIN_AXE", "2H_GREATAXE", "MAIN_NATURESTAFF",
+    "ARMOR_CLOTH_SET1", "ARMOR_LEATHER_SET1", "ARMOR_PLATE_SET1",
+    "HEAD_CLOTH_SET1", "HEAD_LEATHER_SET1", "HEAD_PLATE_SET1",
+    "SHOES_CLOTH_SET1", "SHOES_LEATHER_SET1", "SHOES_PLATE_SET1",
+    "MOUNT_HORSE", "MOUNT_OX", "MOUNT_SWIFTCLAW"
   ];
+  
   const items = [];
   tiers.forEach(tier => {
     baseItems.forEach(base => {
-      if (base === "MOUNT_SWIFTCLAW") {
-        if (tier === "T7") items.push("T7_MOUNT_SWIFTCLAW");
+      if (base.includes("MOUNT_")) {
+        if (tier === "T4" || tier === "T5" || tier === "T7") {
+          items.push(`${tier}_${base}`);
+        }
       } else {
         items.push(`${tier}_${base}`);
       }
@@ -71,7 +75,7 @@ function generateItemIds(tiers) {
 async function fetchAndMergeData(itemIds, progressCallback) {
   if (itemIds.length === 0) return [];
 
-  const BATCH_SIZE = 4;
+  const BATCH_SIZE = 6;
   const batches = [];
   for (let i = 0; i < itemIds.length; i += BATCH_SIZE) {
     batches.push(itemIds.slice(i, i + BATCH_SIZE));
@@ -138,7 +142,7 @@ window.calculateAdvisor = async function() {
           Searching Albion Europe Database: <span id="searchPercent">0%</span>
         </div>
         <div style="color: #94a3b8; font-size: 0.9rem;">
-          Batch progress: <span id="searchBatches">0/${Math.ceil(targetItems.length / 4)}</span>
+          Batch progress: <span id="searchBatches">0/${Math.ceil(targetItems.length / 6)}</span>
         </div>
       </div>
     `;
