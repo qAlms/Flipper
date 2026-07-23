@@ -126,7 +126,7 @@ async function fetchAndMergeData(itemIds, progressCallback) {
   return Array.from(freshestMap.values());
 }
 
-// 4. MAIN RUN EXECUTION (Explicitly exposed to window)
+// 4. MAIN RUN EXECUTION
 window.calculateAdvisor = async function() {
   const tableBody = document.getElementById('tableBody');
   const { tiers } = getUIFilters();
@@ -162,7 +162,7 @@ window.calculateAdvisor = async function() {
   renderTable();
 };
 
-// 5. RENDER & SORT LOCAL TABLE (Explicitly exposed to window)
+// 5. RENDER & SORT LOCAL TABLE
 window.renderTable = function() {
   const tableBody = document.getElementById('tableBody');
   if (!tableBody || !window.cachedMarketData || window.cachedMarketData.length === 0) return;
