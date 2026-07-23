@@ -1,6 +1,7 @@
-// Global memory cache to store API data once fetched
+// Global memory cache
 let cachedMarketData = [];
 
+// Europe API Endpoints
 const AODP_EUROPE_URL = "https://europe.albion-online-data.com/api/v2/stats/prices/"; 
 const ALBIONDB_EUROPE_URL = "https://albiondb.net/api/v1/europe/prices/"; 
 
@@ -10,9 +11,7 @@ function parseApiDate(dateStr) {
   return isNaN(timestamp) || timestamp <= 0 ? 0 : timestamp;
 }
 
-// ==========================================
 // 1. FETCH & MERGE DATA
-// ==========================================
 async function fetchAndMergeData(itemIds) {
   const itemString = itemIds.join(",");
 
@@ -50,7 +49,9 @@ async function fetchAndMergeData(itemIds) {
     const combinedData = [...normalizedAODP, ...normalizedAlbionDB];
 
     combinedData.forEach(entry => {
+      // Filter out zero-priced items
       if (entry.buyPrice <= 0 && entry.sellPrice <= 0) return;
+      
       const key = `${entry.itemId}_${entry.city}_${entry.quality}`;
       if (!freshestMap.has(key) || entry.updatedAt > freshestMap.get(key).updatedAt) {
         freshestMap.set(key, entry);
@@ -65,14 +66,14 @@ async function fetchAndMergeData(itemIds) {
   }
 }
 
-// ==========================================
-// 2. MAIN FETCH TRIGGER (RUN Button)
-// ==========================================
+// 2. FETCH TRIGGER (RUN BUTTON)
 async function calculateAdvisor() {
   const tableBody = document.getElementById('tableBody');
-  tableBody.innerHTML = `<div class="empty-state">Fetching freshest data from APIs...</div>`;
+  if (tableBody) {
+    tableBody.innerHTML = `<div class="empty-state">Fetching freshest data from APIs...</div>`;
+  }
 
-  // Diverse item list to ensure different names & prices show up
+  // Sample item list
   const targetItems = [
     "T4_BAG", "T5_BAG", "T6_BAG", "T7_BAG", "T8_BAG",
     "T4_MAIN_CLAW", "T6_MAIN_CLAW", 
@@ -83,22 +84,20 @@ async function calculateAdvisor() {
   cachedMarketData = await fetchAndMergeData(targetItems);
 
   if (cachedMarketData.length === 0) {
-    tableBody.innerHTML = `<div class="empty-state">No valid market data available right now. Try clicking RUN again shortly.</div>`;
+    if (tableBody) tableBody.innerHTML = `<div class="empty-state">No valid market data found. Check back in a moment or click RUN.</div>`;
     return;
   }
 
   renderTable();
 }
 
-// ==========================================
 // 3. RENDER & SORT LOCAL DATA
-// ==========================================
 function renderTable() {
   const tableBody = document.getElementById('tableBody');
-  if (!cachedMarketData || cachedMarketData.length === 0) return;
+  if (!tableBody || !cachedMarketData || cachedMarketData.length === 0) return;
 
-  const isPremium = document.getElementById('hasPremium').value === 'true';
-  const sortBy = document.getElementById('sortBy').value;
+  const isPremium = document.getElementById('hasPremium')?.value === 'true';
+  const sortBy = document.getElementById('sortBy')?.value || 'margin';
   const taxRate = isPremium ? 0.04 : 0.08;
   const setupFee = 0.025;
 
@@ -106,7 +105,7 @@ function renderTable() {
 
   let tradeRoutes = [];
 
-  // Group market entries by Item ID and Quality
+  // Group market entries by item and quality
   const itemsGrouped = {};
   cachedMarketData.forEach(entry => {
     const key = `${entry.itemId}_${entry.quality}`;
@@ -114,7 +113,7 @@ function renderTable() {
     itemsGrouped[key].push(entry);
   });
 
-  // Calculate trade routes across different cities
+  // Calculate routes across different cities
   Object.values(itemsGrouped).forEach(cityList => {
     for (let buyEntry of cityList) {
       for (let sellEntry of cityList) {
@@ -142,23 +141,22 @@ function renderTable() {
     }
   });
 
-  // --- SORTING LOGIC ---
+  // Sort logic
   if (sortBy === 'name') {
     tradeRoutes.sort((a, b) => a.itemId.localeCompare(b.itemId));
   } else if (sortBy === 'lastUpdate') {
-    tradeRoutes.sort((a, b) => b.updatedAt - a.updatedAt); // Most recent first
+    tradeRoutes.sort((a, b) => b.updatedAt - a.updatedAt);
   } else {
-    tradeRoutes.sort((a, b) => b.profitMargin - a.profitMargin); // Highest margin first
+    tradeRoutes.sort((a, b) => b.profitMargin - a.profitMargin);
   }
 
   tableBody.innerHTML = '';
 
   if (tradeRoutes.length === 0) {
-    tableBody.innerHTML = `<div class="empty-state">No trade routes match your active location filters.</div>`;
+    tableBody.innerHTML = `<div class="empty-state">No matching trade routes for active location filters.</div>`;
     return;
   }
 
-  // Render sorted rows
   tradeRoutes.forEach((route) => {
     let timeDisplay = "No Recent Data";
     if (route.updatedAt > 0) {
@@ -201,11 +199,8 @@ function renderTable() {
   });
 }
 
-// ==========================================
-// 4. ATTACH AUTOMATIC EVENT LISTENERS
-// ==========================================
+// 4. BIND LISTENERS
 document.addEventListener('DOMContentLoaded', () => {
-  // Trigger re-render instantly on filter/sort changes
   document.getElementById('sortBy')?.addEventListener('change', renderTable);
   document.getElementById('hasPremium')?.addEventListener('change', renderTable);
   
@@ -213,6 +208,5 @@ document.addEventListener('DOMContentLoaded', () => {
     checkbox.addEventListener('change', renderTable);
   });
 
-  // Initial load
   calculateAdvisor();
 });
