@@ -121,7 +121,7 @@ async function fetchAndMergeData(itemIds, progressCallback) {
   return Array.from(freshestMap.values());
 }
 
-// MAIN RUN FUNCTION (ONLY TRIGGERS EVERYTHING WHEN BUTTON IS CLICKED)
+// MAIN RUN FUNCTION
 window.calculateAdvisor = async function() {
   const tableBody = document.getElementById('tableBody');
   const { tiers } = getUIFilters();
@@ -170,7 +170,6 @@ window.renderTable = function() {
   const taxRate = isPremium ? 0.04 : 0.08;
   const setupFee = 0.025;
 
-  // Reads the inputs at the exact moment the table is rendered
   const { qualities, locations, maxBudget } = getUIFilters();
 
   let tradeRoutes = [];
@@ -198,6 +197,10 @@ window.renderTable = function() {
 
         const netRevenue = sellEntry.sellPrice * (1 - setupFee - taxRate);
         const profit = netRevenue - totalCost;
+        
+        // Skip unprofitable routes
+        if (profit <= 0) continue;
+
         const profitMargin = (profit / totalCost) * 100;
 
         tradeRoutes.push({
@@ -226,7 +229,7 @@ window.renderTable = function() {
   tableBody.innerHTML = '';
 
   if (tradeRoutes.length === 0) {
-    tableBody.innerHTML = `<div style="padding: 40px; text-align: center; color: #94a3b8;">No trade routes match your current active filters/budget.</div>`;
+    tableBody.innerHTML = `<div style="padding: 40px; text-align: center; color: #94a3b8;">No profitable trade routes match your current filters.</div>`;
     return;
   }
 
@@ -264,14 +267,12 @@ window.renderTable = function() {
 
 // INITIALIZATION
 document.addEventListener('DOMContentLoaded', () => {
-  // Bind ONLY the Run Button
   const runBtn = document.getElementById('runBtn');
   if (runBtn) {
     runBtn.addEventListener('click', () => {
       window.calculateAdvisor();
     });
   }
-
-  // Show default empty message on load
+  
   window.renderTable();
 });
