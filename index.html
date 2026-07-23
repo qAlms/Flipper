@@ -340,11 +340,11 @@
         <!-- Sort By Dropdown -->
         <div class="input-group">
           <label for="sortBy">Sort By:</label>
-          <select id="sortBy" onchange="calculateAdvisor();">
-            <option value="margin" selected>Profit Margin</option>
-            <option value="name">Name</option>
-            <option value="lastUpdate">Last Update</option>
-          </select>
+<select id="sortBy" onchange="renderTable();">
+  <option value="margin" selected>Profit Margin</option>
+  <option value="name">Name</option>
+  <option value="lastUpdate">Last Update</option>
+</select>
         </div>
 
         <button id="runBtn" class="advisor-btn" onclick="calculateAdvisor();">RUN</button>
