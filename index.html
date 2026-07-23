@@ -3,9 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Albion Advisor - Functional Wireframe Replica</title>
+  <title>Albion Advisor - Custom Layout</title>
   <style>
-    /* Albion Advisor Dark/Gold Color Scheme - Preserved from our first code */
     :root {
       --bg-dark: #0f172a;
       --panel-bg: #1e293b;
@@ -28,36 +27,40 @@
     body {
       background-color: var(--bg-dark);
       color: var(--text-main);
-      padding: 24px;
+      padding: 20px;
       min-height: 100vh;
       display: flex;
       justify-content: center;
       align-items: center;
     }
 
-    /* Sketch Wireframe Layout Structure - image_0.png */
+    /* Main Container - Adjusted to scale nicely across the entire page */
     .wireframe-container {
-      width: 1000px;
-      height: 700px; /* Force the specific aspect from your sketch */
-      border: 3px solid var(--text-main); /* Outer wireframe boundary from image_0.png */
-      border-radius: 10px;
-      background-color: #ffffff11; /* Slight transparent fill for wireframe feel */
+      width: 100%;
+      max-width: 1200px;
+      min-height: 85vh;
+      border: 2px solid var(--panel-border);
+      border-radius: 12px;
+      background-color: var(--panel-bg);
       display: grid;
       grid-template-areas: 
         "header header header"
-        "sidebar main-cols main-cols"
-        "sidebar retry-area retry-area";
-      grid-template-columns: 200px 1fr 1fr;
-      grid-template-rows: 60px 1fr 60px; /* Adjusting height for "retry" row */
-      position: relative; /* For absolutely positioned elements */
+        "sidebar main-cols main-cols";
+      grid-template-columns: 240px 1fr 1fr;
+      grid-template-rows: 60px 1fr;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+      overflow: hidden;
     }
 
-    /* --- Universal Elements --- */
+    /* Form Controls */
     input[type="number"], select {
+      width: 100%;
+      height: 38px;
       background-color: var(--bg-dark);
       border: 1px solid var(--panel-border);
       color: var(--text-main);
-      border-radius: 4px;
+      border-radius: 6px;
+      padding: 0 10px;
       outline: none;
       transition: border 0.2s;
     }
@@ -70,214 +73,241 @@
       background-color: var(--accent-gold);
       color: #0f172a;
       border: none;
-      border-radius: 4px;
-      font-weight: 600;
+      border-radius: 6px;
+      font-weight: 700;
       cursor: pointer;
-      transition: background-color 0.2s;
+      transition: background-color 0.2s, transform 0.1s;
     }
 
     .advisor-btn:hover {
       background-color: var(--accent-gold-hover);
     }
 
-    /* --- Structure Elements from Sketch --- */
-    
+    .advisor-btn:active {
+      transform: scale(0.98);
+    }
+
+    /* Header */
     header.sketch-header {
       grid-area: header;
-      background: var(--panel-bg);
-      border-bottom: 2px solid var(--text-main);
+      background: rgba(15, 23, 42, 0.6);
+      border-bottom: 2px solid var(--panel-border);
       display: flex;
       align-items: center;
-      padding: 0 15px;
+      padding: 0 20px;
       font-size: 1.2rem;
       font-weight: bold;
+      color: var(--accent-gold);
     }
 
+    /* Sidebar Layout - Clean flexbox stack so elements don't overlap */
     aside.sketch-sidebar {
       grid-area: sidebar;
-      border-right: 2px solid var(--text-main);
+      border-right: 2px solid var(--panel-border);
       display: flex;
       flex-direction: column;
-      gap: 15px;
+      gap: 18px;
       padding: 20px 15px;
+      background: var(--bg-dark);
     }
 
-    /* Specifying exact positioning from image_0.png sketch */
     .input-label-group {
       display: flex;
       flex-direction: column;
-      gap: 5px;
+      gap: 6px;
     }
 
-    /* Input size from sketch constraints */
-    #budget { width: 100%; height: 35px; text-align: center;} 
-    #whitelist, #blacklist { width: 100%; height: 35px; }
-    
-    /* Absolute size constraints for Run button from sketch */
+    .input-label-group label {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      font-weight: 600;
+    }
+
+    /* Standardized button placement within flexbox flow */
     #runBtn { 
-      position: absolute;
-      top: 180px; /* Estimated top margin from run to top of sidebar in sketch */
-      left: 30px; /* Estimated left margin from run in sketch */
-      width: 70px;
-      height: 40px;
+      width: 100%;
+      height: 42px;
+      margin-top: 10px;
+      font-size: 1rem;
     }
 
+    /* Main Display Columns Area */
     main.sketch-main-cols {
       grid-area: main-cols;
       display: flex;
-      gap: 15px;
-      padding: 20px;
-      position: relative; /* For retry button absolute alignment */
+      flex-direction: column;
+      justify-content: space-between;
+      padding: 24px;
+      gap: 20px;
+    }
+
+    .columns-wrapper {
+      display: flex;
+      gap: 20px;
+      flex: 1;
     }
 
     .data-col {
       flex: 1;
-      border: 2px solid var(--text-main);
-      border-radius: 5px;
-      background: #00000033;
-      padding: 15px;
+      border: 1px solid var(--panel-border);
+      border-radius: 8px;
+      background: rgba(15, 23, 42, 0.5);
+      padding: 20px;
       position: relative;
     }
 
     .col-label {
       position: absolute;
-      top: -12px;
-      left: 10px;
-      background: var(--bg-dark);
-      padding: 0 5px;
-      font-size: 1.5rem;
-      font-family: 'Times New Roman', serif; /* Matching sketch style for I/II */
-    }
-
-    /* Specifying retry button exactly where it is in image_0.png */
-    .retry-alignment {
-      position: absolute;
-      bottom: -45px; /* Offset to align below the main data boxes as sketched */
+      top: -14px;
       left: 15px;
+      background: var(--panel-bg);
+      padding: 0 8px;
+      font-size: 1.3rem;
+      font-weight: bold;
+      color: var(--accent-gold);
+      border: 1px solid var(--panel-border);
+      border-radius: 4px;
     }
 
-    #retryBtn {
-      width: 120px;
-      height: 60px;
-    }
-
-    /* Specific functional logic for Data Display in cols I/II */
+    /* Dynamic Data Row Items */
     .data-display-item {
       display: flex;
       justify-content: space-between;
       border-bottom: 1px dashed var(--panel-border);
-      padding: 8px 0;
+      padding: 12px 0;
       font-size: 14px;
     }
 
-    .data-display-item strong {
-      font-weight: 600;
+    .data-display-item:last-child {
+      border-bottom: none;
     }
 
     .profit-positive { color: var(--accent-green); }
     .profit-negative { color: var(--accent-red); }
 
+    /* Bottom area for Retry button */
+    .retry-area {
+      display: flex;
+      justify-content: flex-start;
+      padding-top: 10px;
+    }
+
+    #retryBtn {
+      width: 140px;
+      height: 45px;
+      font-size: 0.95rem;
+    }
   </style>
 </head>
 <body>
 
-  <!-- 
-    The Wireframe Container. 
-    Maintains the overall 1000x700px boundary from image_0.png.
-  -->
   <div class="wireframe-container">
     
     <header class="sketch-header">
-      Albion Advisor - Data Wireframe
+      ⚔️ Albion Advisor — Market & Trade Route Assistant
     </header>
 
-    <!-- Sidebar Layout, derived directly from image_0.png -->
+    <!-- Sidebar Control Panel -->
     <aside class="sketch-sidebar">
       
-      <!-- 'buget' Input: Confirmed number-only whitelist -->
+      <!-- Budget Input -->
       <div class="input-label-group">
-        <label for="budget" style="font-size: 0.9rem;">Budget (Number only):</label>
+        <label for="budget">Budget (Silver):</label>
         <input type="number" id="budget" name="budget" placeholder="0" value="1000000" oninput="calculateAdvisor();">
       </div>
 
-      <!-- 'whitelist' Select: Choice Button -->
+      <!-- Whitelist Cities Select -->
       <div class="input-label-group">
-        <label for="whitelist" style="font-size: 0.9rem;">Whitelist (Choice):</label>
-        <select id="whitelist" name="whitelist">
-          <option value="all">All Tiers</option>
-          <option value="t5">T5+ Only</option>
-          <option value="enchantment1">Enchant. 1+</option>
+        <label for="whitelist">City Whitelist:</label>
+        <select id="whitelist" name="whitelist" onchange="calculateAdvisor();">
+          <option value="all">All Cities</option>
+          <option value="Caerleon">Caerleon</option>
+          <option value="Bridgewatch">Bridgewatch</option>
+          <option value="Fort Sterling">Fort Sterling</option>
+          <option value="Lymhurst">Lymhurst</option>
+          <option value="Martlock">Martlock</option>
+          <option value="Thetford">Thetford</option>
+          <option value="Brecilien">Brecilien</option>
         </select>
       </div>
 
-      <!-- 'blacklist' Select: Choice Button -->
+      <!-- Blacklist Cities Select -->
       <div class="input-label-group">
-        <label for="blacklist" style="font-size: 0.9rem;">Blacklist (Choice):</label>
-        <select id="blacklist" name="blacklist">
+        <label for="blacklist">City Blacklist:</label>
+        <select id="blacklist" name="blacklist" onchange="calculateAdvisor();">
           <option value="none">None</option>
-          <option value="noBooks">No Skill Books</option>
-          <option value="lowProfits">Skip Low Profit</option>
+          <option value="Caerleon">Caerleon</option>
+          <option value="Bridgewatch">Bridgewatch</option>
+          <option value="Fort Sterling">Fort Sterling</option>
+          <option value="Lymhurst">Lymhurst</option>
+          <option value="Martlock">Martlock</option>
+          <option value="Thetford">Thetford</option>
+          <option value="Brecilien">Brecilien</option>
         </select>
       </div>
 
-      <!-- 'run' Button -->
+      <!-- Run Button -->
       <button id="runBtn" class="advisor-btn" onclick="calculateAdvisor();">RUN</button>
 
     </aside>
 
-    <!-- Main Data Area with absolute layout elements -->
+    <!-- Main Output Display -->
     <main class="sketch-main-cols">
       
-      <!-- Column I: Data Display -->
-      <div class="data-col" id="colI">
-        <div class="col-label">I</div>
-        
-        <div class="data-display-item">
-          <span>from <strong id="fromLocI">Caerleon</strong> >>> <strong id="toLocI">Martlock</strong></span>
+      <div class="columns-wrapper">
+        <!-- Column I -->
+        <div class="data-col" id="colI">
+          <div class="col-label">I</div>
+          
+          <div class="data-display-item" style="margin-top: 10px;">
+            <span>Route:</span>
+            <span>from <strong id="fromLocI" style="color: var(--accent-gold);">Caerleon</strong> ➔ <strong id="toLocI" style="color: var(--accent-gold);">Martlock</strong></span>
+          </div>
+          <div class="data-display-item">
+            <span>Profit:</span><strong id="profitI" class="profit-positive">0 Silver</strong>
+          </div>
+          <div class="data-display-item">
+            <span>Buy Price:</span><strong id="buyI">0</strong>
+          </div>
+          <div class="data-display-item">
+            <span>Sell Price:</span><strong id="sellI">0</strong>
+          </div>
+          <div class="data-display-item">
+            <span>Quantity:</span><strong id="qtyI">0</strong>
+          </div>
+          <div class="data-display-item">
+            <span>Profit per item:</span><strong id="pPerQI">0</strong>
+          </div>
         </div>
-        <div class="data-display-item">
-          <span>Profit:</span><strong id="profitI" class="profit-positive">0</strong>
-        </div>
-        <div class="data-display-item">
-          <span>Buy Price:</span><strong id="buyI">0</strong>
-        </div>
-        <div class="data-display-item">
-          <span>Sell Price:</span><strong id="sellI">0</strong>
-        </div>
-        <div class="data-display-item">
-          <span>Quantity:</span><strong id="qtyI">0</strong>
-        </div>
-        <div class="data-display-item">
-          <span>Profit/Quantity:</span><strong id="pPerQI">0</strong>
+
+        <!-- Column II -->
+        <div class="data-col" id="colII">
+          <div class="col-label">II</div>
+          
+          <div class="data-display-item" style="margin-top: 10px;">
+            <span>Route:</span>
+            <span>from <strong id="fromLocII" style="color: var(--accent-gold);">Lymhurst</strong> ➔ <strong id="toLocII" style="color: var(--accent-gold);">Thetford</strong></span>
+          </div>
+          <div class="data-display-item">
+            <span>Profit:</span><strong id="profitII" class="profit-positive">0 Silver</strong>
+          </div>
+          <div class="data-display-item">
+            <span>Buy Price:</span><strong id="buyII">0</strong>
+          </div>
+          <div class="data-display-item">
+            <span>Sell Price:</span><strong id="sellII">0</strong>
+          </div>
+          <div class="data-display-item">
+            <span>Quantity:</span><strong id="qtyII">0</strong>
+          </div>
+          <div class="data-display-item">
+            <span>Profit per item:</span><strong id="pPerQII">0</strong>
+          </div>
         </div>
       </div>
 
-      <!-- Column II: Data Display -->
-      <div class="data-col" id="colII">
-        <div class="col-label">II</div>
-        
-        <div class="data-display-item">
-          <span>from <strong id="fromLocII">Lymhurst</strong> >>> <strong id="toLocII">Thetford</strong></span>
-        </div>
-        <div class="data-display-item">
-          <span>Profit:</span><strong id="profitII" class="profit-positive">0</strong>
-        </div>
-        <div class="data-display-item">
-          <span>Buy Price:</span><strong id="buyII">0</strong>
-        </div>
-        <div class="data-display-item">
-          <span>Sell Price:</span><strong id="sellII">0</strong>
-        </div>
-        <div class="data-display-item">
-          <span>Quantity:</span><strong id="qtyII">0</strong>
-        </div>
-        <div class="data-display-item">
-          <span>Profit/Quantity:</span><strong id="pPerQII">0</strong>
-        </div>
-      </div>
-
-      <!-- 'retry' Button: Specific absolute alignment below data columns -->
-      <div class="retry-alignment">
+      <!-- Retry Action Area -->
+      <div class="retry-area">
         <button id="retryBtn" class="advisor-btn" onclick="calculateAdvisor();">RETRY</button>
       </div>
 
@@ -285,89 +315,88 @@
   </div>
 
   <script>
-    /*
-      Advisor functional logic.
-      This logic is preserved and adapts to the new wireframe data inputs.
-    */
     function calculateAdvisor() {
-      // Input capture
       const budgetVal = parseFloat(document.getElementById('budget').value) || 0;
+      const whitelistCity = document.getElementById('whitelist').value;
+      const blacklistCity = document.getElementById('blacklist').value;
       
-      // Preset data simulation (as before)
-      const mockFlippingData = [
-        { buy: 2000, sell: 2800, name: "Item A" },
-        { buy: 1500, sell: 1950, name: "Item B" },
-        { buy: 500, sell: 950, name: "Item C" }
+      const routes = [
+        { from: "Caerleon", to: "Martlock", buy: 2000, sell: 2800 },
+        { from: "Lymhurst", to: "Thetford", buy: 1500, sell: 2150 }
       ];
 
-      function updateDataDisplay(colPrefix, itemIdx) {
-        if (budgetVal === 0) {
-          document.getElementById(colPrefix + 'Profit').innerText = '0 Silver';
-          document.getElementById(colPrefix + 'Profit').className = 'profit-negative';
-          // (Clear other fields... simplified for this example)
+      function updateCol(colId, routeData) {
+        let fromCity = routeData.from;
+        let toCity = routeData.to;
+
+        // Apply Whitelist / Blacklist visual override logic for display
+        if (whitelistCity !== 'all') {
+          fromCity = whitelistCity;
+        }
+        if (blacklistCity !== 'none' && fromCity === blacklistCity) {
+          fromCity = "Fort Sterling"; // Fallback if blacklisted
+        }
+
+        document.getElementById('fromLoc' + colId).innerText = fromCity;
+        document.getElementById('toLoc' + colId).innerText = toCity;
+
+        if (budgetVal <= 0) {
+          document.getElementById('profit' + colId).innerText = '0 Silver';
+          document.getElementById('profit' + colId).className = 'profit-negative';
+          document.getElementById('buy' + colId).innerText = '0';
+          document.getElementById('sell' + colId).innerText = '0';
+          document.getElementById('qty' + colId).innerText = '0';
+          document.getElementById('pPerQ' + colId).innerText = '0';
           return;
         }
 
-        const dataItem = mockFlippingData[itemIdx % mockFlippingData.length];
+        const setupFeeRate = 0.025;
+        const salesTaxRate = 0.04;
         
-        // Tax is always handled (preserved logic from previous code)
-        const setupFeeRate = 0.025; // 2.5% market setup fee
-        const salesTaxRate = 0.04; // Assume Premium for tax in this wireframe
+        const qtyToBuy = Math.floor(budgetVal / (routeData.buy * (1 + setupFeeRate)));
         
-        // Quantity derived directly from budget constraint
-        const qtyToBuy = Math.floor(budgetVal / (dataItem.buy * (1 + setupFeeRate)));
-        
-        if (qtyToBuy === 0) {
-          document.getElementById(colPrefix + 'Profit').innerText = 'Insufficient Funds';
-          document.getElementById(colPrefix + 'Profit').className = 'profit-negative';
+        if (qtyToBuy <= 0) {
+          document.getElementById('profit' + colId).innerText = 'Low Budget';
+          document.getElementById('profit' + colId).className = 'profit-negative';
           return;
         }
 
-        const totalBuyCost = dataItem.buy * (1 + setupFeeRate) * qtyToBuy;
-        const totalSellGross = dataItem.sell * qtyToBuy;
-
-        const setupFees = (dataItem.sell * setupFeeRate * qtyToBuy); // Only need sell fee here as we already added buy fee to totalBuyCost. Simplified comparison
+        const totalBuyCost = routeData.buy * (1 + setupFeeRate) * qtyToBuy;
+        const totalSellGross = routeData.sell * qtyToBuy;
+        const setupFees = (routeData.sell * setupFeeRate * qtyToBuy); 
         const salesTax = totalSellGross * salesTaxRate;
 
         const netProfit = totalSellGross - totalBuyCost - setupFees - salesTax;
         const profitPerUnit = netProfit / qtyToBuy;
 
-        // UI Updates with correct alignment based on budget
-        const profitEl = document.getElementById(colPrefix + 'Profit');
+        const profitEl = document.getElementById('profit' + colId);
         profitEl.innerText = Math.round(netProfit).toLocaleString() + ' Silver';
         profitEl.className = netProfit >= 0 ? 'profit-positive' : 'profit-negative';
 
-        document.getElementById(colPrefix + 'Buy').innerText = dataItem.buy.toLocaleString();
-        document.getElementById(colPrefix + 'Sell').innerText = dataItem.sell.toLocaleString();
-        document.getElementById(colPrefix + 'Qty').innerText = qtyToBuy.toLocaleString();
-        document.getElementById(colPrefix + 'PPerQ').innerText = Math.round(profitPerUnit).toLocaleString();
+        document.getElementById('buy' + colId).innerText = routeData.buy.toLocaleString() + ' Silver';
+        document.getElementById('sell' + colId).innerText = routeData.sell.toLocaleString() + ' Silver';
+        document.getElementById('qty' + colId).innerText = qtyToBuy.toLocaleString();
+        document.getElementById('pPerQ' + colId).innerText = Math.round(profitPerUnit).toLocaleString() + ' Silver';
       }
 
-      // Update both columns
-      updateDataDisplay('', 0); // Using the prefix for Col I (default)
-      updateDataDisplay('I', 0); // Need to re-trigger for col prefix specificity 
-      updateDataDisplay('II', 1); // Display second item in simulated data
+      updateCol('I', routes[0]);
+      updateCol('II', routes[1]);
     }
 
-    // Explicitly enforce number-only whitelisting on 'buget' input
-    // The browser <input type="number"> does 90% of this work.
-    // Additional whitelisting to prevent paste/scientific notation if strict control is desired
+    // Strict numerical input filter for budget
     const budgetInput = document.getElementById('budget');
-    budgetInput.addEventListener('keydown', function(event) {
-        // Whitelist backspace, delete, tab, escape, enter, decimal, numbers
-        if (event.ctrlKey || event.metaKey) return; // Allow paste/select
-        if ([8, 9, 27, 13, 110, 190].indexOf(event.keyCode) !== -1 ||
-            (event.keyCode >= 35 && event.keyCode <= 39) ||
-            (event.keyCode >= 48 && event.keyCode <= 57) ||
-            (event.keyCode >= 96 && event.keyCode <= 105)) {
-            return;
-        }
-        event.preventDefault();
+    budgetInput.addEventListener('keydown', function(e) {
+      if (e.ctrlKey || e.metaKey) return;
+      if ([8, 9, 27, 13, 110, 190].indexOf(e.keyCode) !== -1 ||
+          (e.keyCode >= 35 && e.keyCode <= 39) ||
+          (e.keyCode >= 48 && e.keyCode <= 57) ||
+          (e.keyCode >= 96 && e.keyCode <= 105)) {
+        return;
+      }
+      e.preventDefault();
     });
 
-    // Initial run
     calculateAdvisor();
-
   </script>
 </body>
 </html>
