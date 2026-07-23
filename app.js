@@ -1,9 +1,8 @@
 // Global memory cache
-let cachedMarketData = [];
+window.cachedMarketData = [];
 
-// API Base URLs
+// Official Albion Online Data Project - Europe Server
 const AODP_EUROPE_URL = "https://europe.albion-online-data.com/api/v2/stats/prices/";
-const ALBIONDB_EUROPE_URL = "https://albiondb.net/api/v1/europe/prices/";
 
 function parseApiDate(dateStr) {
   if (!dateStr || dateStr.startsWith("0001-01-01")) return 0;
@@ -21,7 +20,7 @@ function getQualityNumber(val) {
   return Number(val) || 1;
 }
 
-// 1. GET ACTIVE FILTERS FROM UI
+// 1. READ UI FILTERS
 function getUIFilters() {
   const checkboxes = Array.from(document.querySelectorAll('input[type="checkbox"]:checked'));
 
@@ -51,7 +50,7 @@ function getUIFilters() {
   return { tiers, qualities, locations, maxBudget };
 }
 
-// 2. DYNAMIC ITEM ID GENERATOR
+// 2. GENERATE ITEM IDS
 function generateItemIds(tiers) {
   const baseItems = [
     "BAG", "CAPE", "MAIN_CLAW", "MOUNT_SWIFTCLAW", 
@@ -72,65 +71,49 @@ function generateItemIds(tiers) {
   return Array.from(new Set(items));
 }
 
-// 3. FETCH DATA IN BATCHES WITH LIVE % PROGRESS
-async function fetchAndMergeDataInBatches(itemIds, updateProgressCallback) {
+// 3. FETCH DATA IN SMALL BATCHES
+async function fetchAndMergeData(itemIds, progressCallback) {
   if (itemIds.length === 0) return [];
 
-  // Split items into small batches of 5 to avoid URI length/API limits
-  const BATCH_SIZE = 5;
+  const BATCH_SIZE = 4;
   const batches = [];
   for (let i = 0; i < itemIds.length; i += BATCH_SIZE) {
     batches.push(itemIds.slice(i, i + BATCH_SIZE));
   }
 
   let allResults = [];
-  let completedBatches = 0;
+  let completed = 0;
 
   for (const batch of batches) {
     const itemString = batch.join(",");
+    const requestUrl = `${AODP_EUROPE_URL}${itemString}.json`;
 
     try {
-      const [aodpResponse, albionDbResponse] = await Promise.all([
-        fetch(`${AODP_EUROPE_URL}${encodeURIComponent(itemString)}.json`).catch(() => null),
-        fetch(`${ALBIONDB_EUROPE_URL}${encodeURIComponent(itemString)}`).catch(() => null)
-      ]);
-
-      const aodpData = aodpResponse && aodpResponse.ok ? await aodpResponse.json() : [];
-      const albionDbData = albionDbResponse && albionDbResponse.ok ? await albionDbResponse.json() : [];
-
-      const normalizedAODP = aodpData.map(item => ({
-        itemId: item.item_id,
-        city: item.city,
-        quality: item.quality,
-        buyPrice: item.sell_price_min || 0,
-        sellPrice: item.buy_price_max || 0,
-        updatedAt: Math.max(
-          parseApiDate(item.sell_price_min_date),
-          parseApiDate(item.buy_price_max_date)
-        )
-      }));
-
-      const normalizedAlbionDB = albionDbData.map(item => ({
-        itemId: item.item_id || item.itemId,
-        city: item.city,
-        quality: item.quality,
-        buyPrice: item.sell_price_min || item.buyPrice || 0,
-        sellPrice: item.buy_price_max || item.sellPrice || 0,
-        updatedAt: parseApiDate(item.updated_at || item.updatedAt)
-      }));
-
-      allResults.push(...normalizedAODP, ...normalizedAlbionDB);
-
+      const response = await fetch(requestUrl);
+      if (response.ok) {
+        const data = await response.json();
+        const normalized = data.map(item => ({
+          itemId: item.item_id,
+          city: item.city,
+          quality: item.quality,
+          buyPrice: item.sell_price_min || 0,
+          sellPrice: item.buy_price_max || 0,
+          updatedAt: Math.max(
+            parseApiDate(item.sell_price_min_date),
+            parseApiDate(item.buy_price_max_date)
+          )
+        }));
+        allResults.push(...normalized);
+      }
     } catch (err) {
-      console.error("Batch fetch error:", err);
+      console.warn(`Failed batch query: ${requestUrl}`, err);
     }
 
-    completedBatches++;
-    const percent = Math.round((completedBatches / batches.length) * 100);
-    if (updateProgressCallback) updateProgressCallback(percent, completedBatches, batches.length);
+    completed++;
+    const percent = Math.round((completed / batches.length) * 100);
+    if (progressCallback) progressCallback(percent, completed, batches.length);
   }
 
-  // Deduplicate and retain freshest records
   const freshestMap = new Map();
   allResults.forEach(entry => {
     if (entry.buyPrice <= 0 && entry.sellPrice <= 0) return;
@@ -143,46 +126,46 @@ async function fetchAndMergeDataInBatches(itemIds, updateProgressCallback) {
   return Array.from(freshestMap.values());
 }
 
-// 4. MAIN RUN BUTTON TRIGGER
-async function calculateAdvisor() {
+// 4. MAIN RUN EXECUTION (Explicitly exposed to window)
+window.calculateAdvisor = async function() {
   const tableBody = document.getElementById('tableBody');
   const { tiers } = getUIFilters();
   const targetItems = generateItemIds(tiers);
 
   if (tableBody) {
     tableBody.innerHTML = `
-      <div style="padding: 30px; text-align: center; color: #4ba3e3;">
+      <div style="padding: 30px; text-align: center; color: #ffb74d;">
         <div style="font-size: 1.2rem; font-weight: bold; margin-bottom: 8px;">
-          Searching Databases: <span id="searchPercent">0%</span>
+          Querying Albion Europe Database: <span id="searchPercent">0%</span>
         </div>
         <div style="color: #aaa; font-size: 0.9rem;">
-          Querying <span id="searchBatches">0/0</span> item batches...
+          Batch progress: <span id="searchBatches">0/${Math.ceil(targetItems.length / 4)}</span>
         </div>
       </div>
     `;
   }
 
-  cachedMarketData = await fetchAndMergeDataInBatches(targetItems, (percent, done, total) => {
+  window.cachedMarketData = await fetchAndMergeData(targetItems, (percent, done, total) => {
     const percentEl = document.getElementById('searchPercent');
     const batchesEl = document.getElementById('searchBatches');
     if (percentEl) percentEl.textContent = `${percent}%`;
     if (batchesEl) batchesEl.textContent = `${done}/${total}`;
   });
 
-  if (!cachedMarketData || cachedMarketData.length === 0) {
+  if (!window.cachedMarketData || window.cachedMarketData.length === 0) {
     if (tableBody) {
-      tableBody.innerHTML = `<div class="empty-state" style="padding: 20px; text-align: center; color: #aaa;">No active market prices found in databases. Try clicking RUN again.</div>`;
+      tableBody.innerHTML = `<div style="padding: 20px; text-align: center; color: #f44336;">No market data received. Try clicking RUN again.</div>`;
     }
     return;
   }
 
   renderTable();
-}
+};
 
-// 5. RENDER & SORT LOCAL DATA
-function renderTable() {
+// 5. RENDER & SORT LOCAL TABLE (Explicitly exposed to window)
+window.renderTable = function() {
   const tableBody = document.getElementById('tableBody');
-  if (!tableBody || !cachedMarketData || cachedMarketData.length === 0) return;
+  if (!tableBody || !window.cachedMarketData || window.cachedMarketData.length === 0) return;
 
   const isPremium = document.getElementById('hasPremium')?.value === 'true' || 
                     document.querySelector('select')?.value?.includes('4%');
@@ -195,7 +178,7 @@ function renderTable() {
   let tradeRoutes = [];
 
   const itemsGrouped = {};
-  cachedMarketData.forEach(entry => {
+  window.cachedMarketData.forEach(entry => {
     if (!qualities.includes(Number(entry.quality))) return;
     const key = `${entry.itemId}_${entry.quality}`;
     if (!itemsGrouped[key]) itemsGrouped[key] = [];
@@ -245,7 +228,7 @@ function renderTable() {
   tableBody.innerHTML = '';
 
   if (tradeRoutes.length === 0) {
-    tableBody.innerHTML = `<div class="empty-state" style="padding: 20px; text-align: center; color: #aaa;">No matching trade routes found for your current filters/budget.</div>`;
+    tableBody.innerHTML = `<div class="empty-state" style="padding: 20px; text-align: center; color: #aaa;">No matching trade routes found for your active filters/budget limit.</div>`;
     return;
   }
 
@@ -289,20 +272,20 @@ function renderTable() {
 
     tableBody.innerHTML += rowHTML;
   });
-}
+};
 
-// 6. EVENT LISTENERS
+// AUTOMATIC EVENT BINDINGS
 document.addEventListener('DOMContentLoaded', () => {
   document.querySelectorAll('select, input').forEach(element => {
     if (element.type === 'button' || element.tagName === 'BUTTON') return;
-    element.addEventListener('change', renderTable);
-    element.addEventListener('input', renderTable);
+    element.addEventListener('change', window.renderTable);
+    element.addEventListener('input', window.renderTable);
   });
 
   const runBtn = document.querySelector('button') || document.querySelector('.btn-run');
   if (runBtn) {
-    runBtn.addEventListener('click', calculateAdvisor);
+    runBtn.addEventListener('click', window.calculateAdvisor);
   }
 
-  calculateAdvisor();
+  window.calculateAdvisor();
 });
