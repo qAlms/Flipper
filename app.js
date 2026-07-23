@@ -24,6 +24,7 @@ function getQualityNumber(val) {
 function getUIFilters() {
   const checkboxes = Array.from(document.querySelectorAll('input[type="checkbox"]:checked'));
 
+  // Extract Tiers
   let tiers = checkboxes
     .map(cb => cb.value.toUpperCase())
     .filter(val => val.startsWith('T') || ['4','5','6','7','8'].includes(val))
@@ -31,12 +32,14 @@ function getUIFilters() {
 
   if (tiers.length === 0) tiers = ["T4", "T5", "T6", "T7", "T8"];
 
+  // Extract Qualities
   let qualities = checkboxes
     .map(cb => getQualityNumber(cb.value))
     .filter(val => val >= 1 && val <= 5);
 
   if (qualities.length === 0) qualities = [1, 2, 3, 4, 5];
 
+  // Extract Locations
   const knownCities = ["Fort Sterling", "Lymhurst", "Bridgewatch", "Martlock", "Thetford", "Caerleon", "Brecilien", "Black Market"];
   let locations = checkboxes
     .map(cb => cb.value)
@@ -44,6 +47,7 @@ function getUIFilters() {
 
   if (locations.length === 0) locations = knownCities;
 
+  // Extract Budget
   const budgetInput = document.querySelector('input[type="number"]') || document.getElementById('budget');
   const maxBudget = budgetInput ? Number(budgetInput.value) || Infinity : Infinity;
 
@@ -71,6 +75,25 @@ function generateItemIds(tiers) {
   return Array.from(new Set(items));
 }
 
+// FETCH WITH TIMEOUT (Prevents freeze/stuck at 91%)
+async function fetchWithTimeout(resource, options = {}) {
+  const { timeout = 5000 } = options;
+  const controller = new AbortController();
+  const id = setTimeout(() => controller.abort(), timeout);
+
+  try {
+    const response = await fetch(resource, {
+      ...options,
+      signal: controller.signal
+    });
+    clearTimeout(id);
+    return response;
+  } catch (error) {
+    clearTimeout(id);
+    throw error;
+  }
+}
+
 // 3. FETCH DATA IN SMALL BATCHES
 async function fetchAndMergeData(itemIds, progressCallback) {
   if (itemIds.length === 0) return [];
@@ -89,7 +112,7 @@ async function fetchAndMergeData(itemIds, progressCallback) {
     const requestUrl = `${AODP_EUROPE_URL}${itemString}.json`;
 
     try {
-      const response = await fetch(requestUrl);
+      const response = await fetchWithTimeout(requestUrl, { timeout: 5000 });
       if (response.ok) {
         const data = await response.json();
         const normalized = data.map(item => ({
@@ -106,7 +129,7 @@ async function fetchAndMergeData(itemIds, progressCallback) {
         allResults.push(...normalized);
       }
     } catch (err) {
-      console.warn(`Failed batch query: ${requestUrl}`, err);
+      console.warn(`Batch request timed out or skipped: ${requestUrl}`);
     }
 
     completed++;
@@ -169,7 +192,7 @@ window.renderTable = function() {
 
   const isPremium = document.getElementById('hasPremium')?.value === 'true' || 
                     document.querySelector('select')?.value?.includes('4%');
-  const sortBy = document.getElementById('sortBy')?.value || 'margin';
+  const sortBy = document.getElementById('sortBy')?.value || document.querySelectorAll('select')[1]?.value || 'margin';
   const taxRate = isPremium ? 0.04 : 0.08;
   const setupFee = 0.025;
 
@@ -217,9 +240,9 @@ window.renderTable = function() {
     }
   });
 
-  if (sortBy === 'name') {
+  if (sortBy.toLowerCase().includes('name')) {
     tradeRoutes.sort((a, b) => a.itemId.localeCompare(b.itemId));
-  } else if (sortBy === 'lastUpdate') {
+  } else if (sortBy.toLowerCase().includes('update')) {
     tradeRoutes.sort((a, b) => b.updatedAt - a.updatedAt);
   } else {
     tradeRoutes.sort((a, b) => b.profitMargin - a.profitMargin);
@@ -274,15 +297,23 @@ window.renderTable = function() {
   });
 };
 
-// AUTOMATIC EVENT BINDINGS
+// AUTOMATIC EVENT BINDINGS FOR LIVE TOGGLING
 document.addEventListener('DOMContentLoaded', () => {
   document.querySelectorAll('select, input').forEach(element => {
     if (element.type === 'button' || element.tagName === 'BUTTON') return;
-    element.addEventListener('change', window.renderTable);
-    element.addEventListener('input', window.renderTable);
+    element.addEventListener('change', () => {
+      if (window.cachedMarketData && window.cachedMarketData.length > 0) {
+        window.renderTable();
+      }
+    });
+    element.addEventListener('input', () => {
+      if (window.cachedMarketData && window.cachedMarketData.length > 0) {
+        window.renderTable();
+      }
+    });
   });
 
-  const runBtn = document.querySelector('button') || document.querySelector('.btn-run');
+  const runBtn = document.querySelector('button') || document.querySelector('.btn-run') || document.getElementById('runBtn');
   if (runBtn) {
     runBtn.addEventListener('click', window.calculateAdvisor);
   }
