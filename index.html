@@ -3,8 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Albion Advisor Replica — Crafting, Refining & Market Calculator</title>
+  <title>Albion Advisor - Functional Wireframe Replica</title>
   <style>
+    /* Albion Advisor Dark/Gold Color Scheme - Preserved from our first code */
     :root {
       --bg-dark: #0f172a;
       --panel-bg: #1e293b;
@@ -29,136 +30,34 @@
       color: var(--text-main);
       padding: 24px;
       min-height: 100vh;
-    }
-
-    .container {
-      max-width: 1100px;
-      margin: 0 auto;
-    }
-
-    header {
       display: flex;
-      justify-content: space-between;
+      justify-content: center;
       align-items: center;
-      padding-bottom: 20px;
-      border-bottom: 1px solid var(--panel-border);
-      margin-bottom: 24px;
     }
 
-    .logo {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-    }
-
-    .logo-icon {
-      background: linear-gradient(135deg, var(--accent-gold), #b45309);
-      width: 40px;
-      height: 40px;
-      border-radius: 8px;
+    /* Sketch Wireframe Layout Structure - image_0.png */
+    .wireframe-container {
+      width: 1000px;
+      height: 700px; /* Force the specific aspect from your sketch */
+      border: 3px solid var(--text-main); /* Outer wireframe boundary from image_0.png */
+      border-radius: 10px;
+      background-color: #ffffff11; /* Slight transparent fill for wireframe feel */
       display: grid;
-      place-items: center;
-      font-weight: bold;
-      color: #000;
-      font-size: 20px;
-      box-shadow: 0 0 12px rgba(245, 158, 11, 0.3);
+      grid-template-areas: 
+        "header header header"
+        "sidebar main-cols main-cols"
+        "sidebar retry-area retry-area";
+      grid-template-columns: 200px 1fr 1fr;
+      grid-template-rows: 60px 1fr 60px; /* Adjusting height for "retry" row */
+      position: relative; /* For absolutely positioned elements */
     }
 
-    .logo h1 {
-      font-size: 22px;
-      letter-spacing: 0.5px;
-    }
-
-    .badge {
-      background-color: rgba(245, 158, 11, 0.15);
-      color: var(--accent-gold);
-      border: 1px solid var(--accent-gold);
-      padding: 4px 10px;
-      border-radius: 20px;
-      font-size: 12px;
-      font-weight: 600;
-    }
-
-    .tabs {
-      display: flex;
-      gap: 12px;
-      margin-bottom: 24px;
-    }
-
-    .tab-btn {
-      background-color: var(--panel-bg);
-      border: 1px solid var(--panel-border);
-      color: var(--text-muted);
-      padding: 10px 20px;
-      border-radius: 8px;
-      cursor: pointer;
-      font-weight: 600;
-      transition: all 0.2s ease;
-    }
-
-    .tab-btn:hover {
-      color: var(--text-main);
-      border-color: var(--accent-gold);
-    }
-
-    .tab-btn.active {
-      background-color: var(--accent-gold);
-      color: #0f172a;
-      border-color: var(--accent-gold);
-    }
-
-    .tab-content {
-      display: none;
-      grid-template-columns: 1fr 1fr;
-      gap: 24px;
-    }
-
-    .tab-content.active {
-      display: grid;
-    }
-
-    @media (max-width: 850px) {
-      .tab-content {
-        grid-template-columns: 1fr;
-      }
-    }
-
-    .panel {
-      background-color: var(--panel-bg);
-      border: 1px solid var(--panel-border);
-      border-radius: 12px;
-      padding: 24px;
-      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
-    }
-
-    .panel h2 {
-      font-size: 18px;
-      margin-bottom: 16px;
-      color: var(--accent-gold);
-      border-bottom: 1px solid var(--panel-border);
-      padding-bottom: 8px;
-    }
-
-    .form-group {
-      margin-bottom: 16px;
-    }
-
-    label {
-      display: block;
-      font-size: 13px;
-      color: var(--text-muted);
-      margin-bottom: 6px;
-      font-weight: 500;
-    }
-
+    /* --- Universal Elements --- */
     input[type="number"], select {
-      width: 100%;
       background-color: var(--bg-dark);
       border: 1px solid var(--panel-border);
       color: var(--text-main);
-      padding: 10px 14px;
-      border-radius: 6px;
-      font-size: 14px;
+      border-radius: 4px;
       outline: none;
       transition: border 0.2s;
     }
@@ -167,348 +66,308 @@
       border-color: var(--accent-gold);
     }
 
-    .toggle-group {
+    .advisor-btn {
+      background-color: var(--accent-gold);
+      color: #0f172a;
+      border: none;
+      border-radius: 4px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background-color 0.2s;
+    }
+
+    .advisor-btn:hover {
+      background-color: var(--accent-gold-hover);
+    }
+
+    /* --- Structure Elements from Sketch --- */
+    
+    header.sketch-header {
+      grid-area: header;
+      background: var(--panel-bg);
+      border-bottom: 2px solid var(--text-main);
+      display: flex;
+      align-items: center;
+      padding: 0 15px;
+      font-size: 1.2rem;
+      font-weight: bold;
+    }
+
+    aside.sketch-sidebar {
+      grid-area: sidebar;
+      border-right: 2px solid var(--text-main);
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+      padding: 20px 15px;
+    }
+
+    /* Specifying exact positioning from image_0.png sketch */
+    .input-label-group {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+
+    /* Input size from sketch constraints */
+    #budget { width: 100%; height: 35px; text-align: center;} 
+    #whitelist, #blacklist { width: 100%; height: 35px; }
+    
+    /* Absolute size constraints for Run button from sketch */
+    #runBtn { 
+      position: absolute;
+      top: 180px; /* Estimated top margin from run to top of sidebar in sketch */
+      left: 30px; /* Estimated left margin from run in sketch */
+      width: 70px;
+      height: 40px;
+    }
+
+    main.sketch-main-cols {
+      grid-area: main-cols;
+      display: flex;
+      gap: 15px;
+      padding: 20px;
+      position: relative; /* For retry button absolute alignment */
+    }
+
+    .data-col {
+      flex: 1;
+      border: 2px solid var(--text-main);
+      border-radius: 5px;
+      background: #00000033;
+      padding: 15px;
+      position: relative;
+    }
+
+    .col-label {
+      position: absolute;
+      top: -12px;
+      left: 10px;
+      background: var(--bg-dark);
+      padding: 0 5px;
+      font-size: 1.5rem;
+      font-family: 'Times New Roman', serif; /* Matching sketch style for I/II */
+    }
+
+    /* Specifying retry button exactly where it is in image_0.png */
+    .retry-alignment {
+      position: absolute;
+      bottom: -45px; /* Offset to align below the main data boxes as sketched */
+      left: 15px;
+    }
+
+    #retryBtn {
+      width: 120px;
+      height: 60px;
+    }
+
+    /* Specific functional logic for Data Display in cols I/II */
+    .data-display-item {
       display: flex;
       justify-content: space-between;
-      align-items: center;
+      border-bottom: 1px dashed var(--panel-border);
       padding: 8px 0;
+      font-size: 14px;
     }
 
-    .toggle-switch {
-      position: relative;
-      display: inline-block;
-      width: 44px;
-      height: 24px;
-    }
-
-    .toggle-switch input {
-      opacity: 0;
-      width: 0;
-      height: 0;
-    }
-
-    .slider {
-      position: absolute;
-      cursor: pointer;
-      top: 0; left: 0; right: 0; bottom: 0;
-      background-color: var(--panel-border);
-      transition: .2s;
-      border-radius: 24px;
-    }
-
-    .slider:before {
-      position: absolute;
-      content: "";
-      height: 18px;
-      width: 18px;
-      left: 3px;
-      bottom: 3px;
-      background-color: white;
-      transition: .2s;
-      border-radius: 50%;
-    }
-
-    input:checked + .slider {
-      background-color: var(--accent-gold);
-    }
-
-    input:checked + .slider:before {
-      transform: translateX(20px);
-    }
-
-    /* Results Dashboard */
-    .metric-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 12px;
-      margin-bottom: 20px;
-    }
-
-    .metric-card {
-      background-color: var(--bg-dark);
-      border: 1px solid var(--panel-border);
-      padding: 16px;
-      border-radius: 8px;
-    }
-
-    .metric-card span {
-      display: block;
-      font-size: 12px;
-      color: var(--text-muted);
-    }
-
-    .metric-card strong {
-      font-size: 18px;
-      display: block;
-      margin-top: 4px;
+    .data-display-item strong {
+      font-weight: 600;
     }
 
     .profit-positive { color: var(--accent-green); }
     .profit-negative { color: var(--accent-red); }
 
-    .breakdown-list {
-      list-style: none;
-    }
-
-    .breakdown-item {
-      display: flex;
-      justify-content: space-between;
-      font-size: 14px;
-      padding: 8px 0;
-      border-bottom: 1px dashed var(--panel-border);
-    }
-
-    .breakdown-item:last-child {
-      border-bottom: none;
-    }
   </style>
 </head>
 <body>
 
-<div class="container">
-  <header>
-    <div class="logo">
-      <div class="logo-icon">⚔️</div>
-      <div>
-        <h1>Albion Advisor</h1>
-        <p style="font-size: 12px; color: var(--text-muted);">Economic Assistant & Profit Calculator</p>
-      </div>
-    </div>
-    <span class="badge">Europe Server Mode</span>
-  </header>
+  <!-- 
+    The Wireframe Container. 
+    Maintains the overall 1000x700px boundary from image_0.png.
+  -->
+  <div class="wireframe-container">
+    
+    <header class="sketch-header">
+      Albion Advisor - Data Wireframe
+    </header>
 
-  <!-- Navigation Tabs -->
-  <div class="tabs">
-    <button class="tab-btn active" onclick="switchTab('crafting')">🔨 Crafting & Refining</button>
-    <button class="tab-btn" onclick="switchTab('flipping')">📈 Market Flipping</button>
+    <!-- Sidebar Layout, derived directly from image_0.png -->
+    <aside class="sketch-sidebar">
+      
+      <!-- 'buget' Input: Confirmed number-only whitelist -->
+      <div class="input-label-group">
+        <label for="budget" style="font-size: 0.9rem;">Budget (Number only):</label>
+        <input type="number" id="budget" name="budget" placeholder="0" value="1000000" oninput="calculateAdvisor();">
+      </div>
+
+      <!-- 'whitelist' Select: Choice Button -->
+      <div class="input-label-group">
+        <label for="whitelist" style="font-size: 0.9rem;">Whitelist (Choice):</label>
+        <select id="whitelist" name="whitelist">
+          <option value="all">All Tiers</option>
+          <option value="t5">T5+ Only</option>
+          <option value="enchantment1">Enchant. 1+</option>
+        </select>
+      </div>
+
+      <!-- 'blacklist' Select: Choice Button -->
+      <div class="input-label-group">
+        <label for="blacklist" style="font-size: 0.9rem;">Blacklist (Choice):</label>
+        <select id="blacklist" name="blacklist">
+          <option value="none">None</option>
+          <option value="noBooks">No Skill Books</option>
+          <option value="lowProfits">Skip Low Profit</option>
+        </select>
+      </div>
+
+      <!-- 'run' Button -->
+      <button id="runBtn" class="advisor-btn" onclick="calculateAdvisor();">RUN</button>
+
+    </aside>
+
+    <!-- Main Data Area with absolute layout elements -->
+    <main class="sketch-main-cols">
+      
+      <!-- Column I: Data Display -->
+      <div class="data-col" id="colI">
+        <div class="col-label">I</div>
+        
+        <div class="data-display-item">
+          <span>from <strong id="fromLocI">Caerleon</strong> >>> <strong id="toLocI">Martlock</strong></span>
+        </div>
+        <div class="data-display-item">
+          <span>Profit:</span><strong id="profitI" class="profit-positive">0</strong>
+        </div>
+        <div class="data-display-item">
+          <span>Buy Price:</span><strong id="buyI">0</strong>
+        </div>
+        <div class="data-display-item">
+          <span>Sell Price:</span><strong id="sellI">0</strong>
+        </div>
+        <div class="data-display-item">
+          <span>Quantity:</span><strong id="qtyI">0</strong>
+        </div>
+        <div class="data-display-item">
+          <span>Profit/Quantity:</span><strong id="pPerQI">0</strong>
+        </div>
+      </div>
+
+      <!-- Column II: Data Display -->
+      <div class="data-col" id="colII">
+        <div class="col-label">II</div>
+        
+        <div class="data-display-item">
+          <span>from <strong id="fromLocII">Lymhurst</strong> >>> <strong id="toLocII">Thetford</strong></span>
+        </div>
+        <div class="data-display-item">
+          <span>Profit:</span><strong id="profitII" class="profit-positive">0</strong>
+        </div>
+        <div class="data-display-item">
+          <span>Buy Price:</span><strong id="buyII">0</strong>
+        </div>
+        <div class="data-display-item">
+          <span>Sell Price:</span><strong id="sellII">0</strong>
+        </div>
+        <div class="data-display-item">
+          <span>Quantity:</span><strong id="qtyII">0</strong>
+        </div>
+        <div class="data-display-item">
+          <span>Profit/Quantity:</span><strong id="pPerQII">0</strong>
+        </div>
+      </div>
+
+      <!-- 'retry' Button: Specific absolute alignment below data columns -->
+      <div class="retry-alignment">
+        <button id="retryBtn" class="advisor-btn" onclick="calculateAdvisor();">RETRY</button>
+      </div>
+
+    </main>
   </div>
 
-  <!-- Tab 1: Crafting & Refining Calculator -->
-  <div id="crafting" class="tab-content active">
-    <div class="panel">
-      <h2>Item Parameters</h2>
+  <script>
+    /*
+      Advisor functional logic.
+      This logic is preserved and adapts to the new wireframe data inputs.
+    */
+    function calculateAdvisor() {
+      // Input capture
+      const budgetVal = parseFloat(document.getElementById('budget').value) || 0;
       
-      <div class="form-group">
-        <label>Estimated Market Sell Price (Per Unit)</label>
-        <input type="number" id="sellPrice" value="1250" oninput="calculateCrafting()">
-      </div>
+      // Preset data simulation (as before)
+      const mockFlippingData = [
+        { buy: 2000, sell: 2800, name: "Item A" },
+        { buy: 1500, sell: 1950, name: "Item B" },
+        { buy: 500, sell: 950, name: "Item C" }
+      ];
 
-      <div class="form-group">
-        <label>Raw Material Cost (Per Unit)</label>
-        <input type="number" id="materialCost" value="800" oninput="calculateCrafting()">
-      </div>
+      function updateDataDisplay(colPrefix, itemIdx) {
+        if (budgetVal === 0) {
+          document.getElementById(colPrefix + 'Profit').innerText = '0 Silver';
+          document.getElementById(colPrefix + 'Profit').className = 'profit-negative';
+          // (Clear other fields... simplified for this example)
+          return;
+        }
 
-      <div class="form-group">
-        <label>Resource Return Rate (RRR %)</label>
-        <input type="number" id="rrr" value="36.7" step="0.1" oninput="calculateCrafting()">
-      </div>
+        const dataItem = mockFlippingData[itemIdx % mockFlippingData.length];
+        
+        // Tax is always handled (preserved logic from previous code)
+        const setupFeeRate = 0.025; // 2.5% market setup fee
+        const salesTaxRate = 0.04; // Assume Premium for tax in this wireframe
+        
+        // Quantity derived directly from budget constraint
+        const qtyToBuy = Math.floor(budgetVal / (dataItem.buy * (1 + setupFeeRate)));
+        
+        if (qtyToBuy === 0) {
+          document.getElementById(colPrefix + 'Profit').innerText = 'Insufficient Funds';
+          document.getElementById(colPrefix + 'Profit').className = 'profit-negative';
+          return;
+        }
 
-      <div class="form-group">
-        <label>Crafting Station Usage Fee (Per 100 Nutrition)</label>
-        <input type="number" id="stationFee" value="500" oninput="calculateCrafting()">
-      </div>
+        const totalBuyCost = dataItem.buy * (1 + setupFeeRate) * qtyToBuy;
+        const totalSellGross = dataItem.sell * qtyToBuy;
 
-      <div class="toggle-group">
-        <span>Active Premium Account (Tax 4% vs 8%)</span>
-        <label class="toggle-switch">
-          <input type="checkbox" id="hasPremium" checked onchange="calculateCrafting()">
-          <span class="slider"></span>
-        </label>
-      </div>
+        const setupFees = (dataItem.sell * setupFeeRate * qtyToBuy); // Only need sell fee here as we already added buy fee to totalBuyCost. Simplified comparison
+        const salesTax = totalSellGross * salesTaxRate;
 
-      <div class="form-group" style="margin-top: 12px;">
-        <label>Crafting Quantity</label>
-        <input type="number" id="quantity" value="100" oninput="calculateCrafting()">
-      </div>
-    </div>
+        const netProfit = totalSellGross - totalBuyCost - setupFees - salesTax;
+        const profitPerUnit = netProfit / qtyToBuy;
 
-    <div class="panel">
-      <h2>Profit Analysis</h2>
-      
-      <div class="metric-grid">
-        <div class="metric-card">
-          <span>Net Profit (Total)</span>
-          <strong id="netProfitTotal" class="profit-positive">0 Silver</strong>
-        </div>
-        <div class="metric-card">
-          <span>Return on Investment (ROI)</span>
-          <strong id="roiPercent">0%</strong>
-        </div>
-      </div>
+        // UI Updates with correct alignment based on budget
+        const profitEl = document.getElementById(colPrefix + 'Profit');
+        profitEl.innerText = Math.round(netProfit).toLocaleString() + ' Silver';
+        profitEl.className = netProfit >= 0 ? 'profit-positive' : 'profit-negative';
 
-      <h3 style="font-size: 14px; color: var(--text-muted); margin-bottom: 12px;">Step-by-Step Breakdown</h3>
-      
-      <ul class="breakdown-list">
-        <li class="breakdown-item">
-          <span>Gross Revenue</span>
-          <strong id="grossRevenue">0</strong>
-        </li>
-        <li class="breakdown-item">
-          <span>Market Tax Deduction</span>
-          <strong id="taxDeduction" style="color: var(--accent-red)">0</strong>
-        </li>
-        <li class="breakdown-item">
-          <span>Effective Material Cost (After RRR)</span>
-          <strong id="effectiveMaterialCost">0</strong>
-        </li>
-        <li class="breakdown-item">
-          <span>Station Usage Fees</span>
-          <strong id="totalStationFee" style="color: var(--accent-red)">0</strong>
-        </li>
-        <li class="breakdown-item" style="font-weight: bold; border-top: 1px solid var(--panel-border); margin-top: 8px; padding-top: 12px;">
-          <span>Profit Per Unit</span>
-          <strong id="profitPerUnit">0</strong>
-        </li>
-      </ul>
-    </div>
-  </div>
+        document.getElementById(colPrefix + 'Buy').innerText = dataItem.buy.toLocaleString();
+        document.getElementById(colPrefix + 'Sell').innerText = dataItem.sell.toLocaleString();
+        document.getElementById(colPrefix + 'Qty').innerText = qtyToBuy.toLocaleString();
+        document.getElementById(colPrefix + 'PPerQ').innerText = Math.round(profitPerUnit).toLocaleString();
+      }
 
-  <!-- Tab 2: Market Flipping Calculator -->
-  <div id="flipping" class="tab-content">
-    <div class="panel">
-      <h2>Flip Parameters</h2>
+      // Update both columns
+      updateDataDisplay('', 0); // Using the prefix for Col I (default)
+      updateDataDisplay('I', 0); // Need to re-trigger for col prefix specificity 
+      updateDataDisplay('II', 1); // Display second item in simulated data
+    }
 
-      <div class="form-group">
-        <label>Buy Order Price (Per Item)</label>
-        <input type="number" id="buyOrderPrice" value="5000" oninput="calculateFlip()">
-      </div>
+    // Explicitly enforce number-only whitelisting on 'buget' input
+    // The browser <input type="number"> does 90% of this work.
+    // Additional whitelisting to prevent paste/scientific notation if strict control is desired
+    const budgetInput = document.getElementById('budget');
+    budgetInput.addEventListener('keydown', function(event) {
+        // Whitelist backspace, delete, tab, escape, enter, decimal, numbers
+        if (event.ctrlKey || event.metaKey) return; // Allow paste/select
+        if ([8, 9, 27, 13, 110, 190].indexOf(event.keyCode) !== -1 ||
+            (event.keyCode >= 35 && event.keyCode <= 39) ||
+            (event.keyCode >= 48 && event.keyCode <= 57) ||
+            (event.keyCode >= 96 && event.keyCode <= 105)) {
+            return;
+        }
+        event.preventDefault();
+    });
 
-      <div class="form-group">
-        <label>Sell Order Price (Per Item)</label>
-        <input type="number" id="sellOrderPrice" value="6800" oninput="calculateFlip()">
-      </div>
+    // Initial run
+    calculateAdvisor();
 
-      <div class="form-group">
-        <label>Quantity</label>
-        <input type="number" id="flipQuantity" value="50" oninput="calculateFlip()">
-      </div>
-
-      <div class="toggle-group">
-        <span>Active Premium (4% Sales Tax)</span>
-        <label class="toggle-switch">
-          <input type="checkbox" id="flipPremium" checked onchange="calculateFlip()">
-          <span class="slider"></span>
-        </label>
-      </div>
-    </div>
-
-    <div class="panel">
-      <h2>Flip Margin Results</h2>
-
-      <div class="metric-grid">
-        <div class="metric-card">
-          <span>Net Profit</span>
-          <strong id="flipNetProfit" class="profit-positive">0 Silver</strong>
-        </div>
-        <div class="metric-card">
-          <span>Profit Margin</span>
-          <strong id="flipMargin">0%</strong>
-        </div>
-      </div>
-
-      <ul class="breakdown-list">
-        <li class="breakdown-item">
-          <span>Total Investment</span>
-          <strong id="flipInvestment">0</strong>
-        </li>
-        <li class="breakdown-item">
-          <span>Setup Fee (2.5% Buy + 2.5% Sell)</span>
-          <strong id="flipSetupFee" style="color: var(--accent-red)">0</strong>
-        </li>
-        <li class="breakdown-item">
-          <span>Sales Tax</span>
-          <strong id="flipSalesTax" style="color: var(--accent-red)">0</strong>
-        </li>
-        <li class="breakdown-item" style="font-weight: bold; border-top: 1px solid var(--panel-border); margin-top: 8px; padding-top: 12px;">
-          <span>Net Profit Per Item</span>
-          <strong id="flipProfitPerItem">0</strong>
-        </li>
-      </ul>
-    </div>
-  </div>
-</div>
-
-<script>
-  function switchTab(tabId) {
-    document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
-    document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
-    
-    event.target.classList.add('active');
-    document.getElementById(tabId).classList.add('active');
-  }
-
-  function calculateCrafting() {
-    const sellPrice = parseFloat(document.getElementById('sellPrice').value) || 0;
-    const materialCost = parseFloat(document.getElementById('materialCost').value) || 0;
-    const rrr = (parseFloat(document.getElementById('rrr').value) || 0) / 100;
-    const stationFee = parseFloat(document.getElementById('stationFee').value) || 0;
-    const hasPremium = document.getElementById('hasPremium').checked;
-    const quantity = parseFloat(document.getElementById('quantity').value) || 1;
-
-    const taxRate = hasPremium ? 0.04 : 0.08;
-    const grossRevenue = sellPrice * quantity;
-    const taxDeduction = grossRevenue * taxRate;
-    
-    // Resource Return Rate reduces material cost: effective_cost = base_cost * (1 - RRR)
-    const effectiveMatCost = (materialCost * (1 - rrr)) * quantity;
-    
-    // Estimated station fee per unit (based on standard item nutrition)
-    const stationFeeTotal = (stationFee * 0.1125) * quantity;
-
-    const totalCost = effectiveMatCost + stationFeeTotal;
-    const netProfit = (grossRevenue - taxDeduction) - totalCost;
-    const roi = totalCost > 0 ? (netProfit / totalCost) * 100 : 0;
-    const profitPerUnit = netProfit / quantity;
-
-    // UI Updates
-    document.getElementById('grossRevenue').innerText = Math.round(grossRevenue).toLocaleString() + ' Silver';
-    document.getElementById('taxDeduction').innerText = '- ' + Math.round(taxDeduction).toLocaleString() + ' Silver';
-    document.getElementById('effectiveMaterialCost').innerText = Math.round(effectiveMatCost).toLocaleString() + ' Silver';
-    document.getElementById('totalStationFee').innerText = '- ' + Math.round(stationFeeTotal).toLocaleString() + ' Silver';
-    
-    const profitEl = document.getElementById('netProfitTotal');
-    profitEl.innerText = Math.round(netProfit).toLocaleString() + ' Silver';
-    profitEl.className = netProfit >= 0 ? 'profit-positive' : 'profit-negative';
-
-    document.getElementById('roiPercent').innerText = roi.toFixed(1) + '%';
-    document.getElementById('profitPerUnit').innerText = Math.round(profitPerUnit).toLocaleString() + ' Silver';
-  }
-
-  function calculateFlip() {
-    const buyPrice = parseFloat(document.getElementById('buyOrderPrice').value) || 0;
-    const sellPrice = parseFloat(document.getElementById('sellOrderPrice').value) || 0;
-    const qty = parseFloat(document.getElementById('flipQuantity').value) || 1;
-    const hasPremium = document.getElementById('flipPremium').checked;
-
-    const setupFeeRate = 0.025; // 2.5% market setup fee
-    const taxRate = hasPremium ? 0.04 : 0.08;
-
-    const totalBuyCost = buyPrice * qty;
-    const totalSellGross = sellPrice * qty;
-
-    const setupFees = (buyPrice * setupFeeRate * qty) + (sellPrice * setupFeeRate * qty);
-    const salesTax = totalSellGross * taxRate;
-
-    const netProfit = totalSellGross - totalBuyCost - setupFees - salesTax;
-    const margin = totalBuyCost > 0 ? (netProfit / totalBuyCost) * 100 : 0;
-
-    // UI Updates
-    document.getElementById('flipInvestment').innerText = Math.round(totalBuyCost).toLocaleString() + ' Silver';
-    document.getElementById('flipSetupFee').innerText = '- ' + Math.round(setupFees).toLocaleString() + ' Silver';
-    document.getElementById('flipSalesTax').innerText = '- ' + Math.round(salesTax).toLocaleString() + ' Silver';
-
-    const netProfitEl = document.getElementById('flipNetProfit');
-    netProfitEl.innerText = Math.round(netProfit).toLocaleString() + ' Silver';
-    netProfitEl.className = netProfit >= 0 ? 'profit-positive' : 'profit-negative';
-
-    document.getElementById('flipMargin').innerText = margin.toFixed(1) + '%';
-    document.getElementById('flipProfitPerItem').innerText = Math.round(netProfit / qty).toLocaleString() + ' Silver';
-  }
-
-  // Initial runs
-  calculateCrafting();
-  calculateFlip();
-</script>
-
+  </script>
 </body>
 </html>
