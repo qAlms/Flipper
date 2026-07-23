@@ -58,8 +58,10 @@
       color: var(--accent-gold);
     }
 
-    /* Top Controls Area */
+    /* Top Controls Area - Ensures clickable layers */
     .top-controls-bar {
+      position: relative;
+      z-index: 10;
       background: var(--panel-bg);
       border-bottom: 1px solid var(--panel-border);
       padding: 16px 24px;
@@ -326,12 +328,12 @@
       <div class="top-row-inputs">
         <div class="input-group">
           <label for="budget">Budget (Silver):</label>
-          <input type="number" id="budget" value="5000000" style="width: 150px;" oninput="calculateAdvisor();">
+          <input type="number" id="budget" value="5000000" style="width: 150px;">
         </div>
 
         <div class="input-group">
           <label for="hasPremium">Premium:</label>
-          <select id="hasPremium" onchange="calculateAdvisor();">
+          <select id="hasPremium">
             <option value="true" selected>Active (4% Tax)</option>
             <option value="false">No Premium (8% Tax)</option>
           </select>
@@ -340,14 +342,14 @@
         <!-- Sort By Dropdown -->
         <div class="input-group">
           <label for="sortBy">Sort By:</label>
-<select id="sortBy" onchange="renderTable();">
-  <option value="margin" selected>Profit Margin</option>
-  <option value="name">Name</option>
-  <option value="lastUpdate">Last Update</option>
-</select>
+          <select id="sortBy">
+            <option value="margin" selected>Profit Margin</option>
+            <option value="name">Name</option>
+            <option value="lastUpdate">Last Update</option>
+          </select>
         </div>
 
-        <button id="runBtn" class="advisor-btn" onclick="calculateAdvisor();">RUN</button>
+        <button id="runBtn" class="advisor-btn">RUN</button>
       </div>
 
       <div class="filter-section-row">
@@ -356,28 +358,28 @@
         <div class="filter-group" id="locationToggles">
           <span class="filter-group-title">Locations:</span>
           <label class="toggle-inline-item">
-            <span class="switch"><input type="checkbox" value="Fort Sterling" data-city="Fort Sterling" checked onchange="calculateAdvisor()"><span class="slider"></span></span> Fort Sterling
+            <span class="switch"><input type="checkbox" value="Fort Sterling" data-city="Fort Sterling" checked><span class="slider"></span></span> Fort Sterling
           </label>
           <label class="toggle-inline-item">
-            <span class="switch"><input type="checkbox" value="Lymhurst" data-city="Lymhurst" checked onchange="calculateAdvisor()"><span class="slider"></span></span> Lymhurst
+            <span class="switch"><input type="checkbox" value="Lymhurst" data-city="Lymhurst" checked><span class="slider"></span></span> Lymhurst
           </label>
           <label class="toggle-inline-item">
-            <span class="switch"><input type="checkbox" value="Bridgewatch" data-city="Bridgewatch" checked onchange="calculateAdvisor()"><span class="slider"></span></span> Bridgewatch
+            <span class="switch"><input type="checkbox" value="Bridgewatch" data-city="Bridgewatch" checked><span class="slider"></span></span> Bridgewatch
           </label>
           <label class="toggle-inline-item">
-            <span class="switch"><input type="checkbox" value="Martlock" data-city="Martlock" checked onchange="calculateAdvisor()"><span class="slider"></span></span> Martlock
+            <span class="switch"><input type="checkbox" value="Martlock" data-city="Martlock" checked><span class="slider"></span></span> Martlock
           </label>
           <label class="toggle-inline-item">
-            <span class="switch"><input type="checkbox" value="Thetford" data-city="Thetford" checked onchange="calculateAdvisor()"><span class="slider"></span></span> Thetford
+            <span class="switch"><input type="checkbox" value="Thetford" data-city="Thetford" checked><span class="slider"></span></span> Thetford
           </label>
           <label class="toggle-inline-item">
-            <span class="switch"><input type="checkbox" value="Caerleon" data-city="Caerleon" checked onchange="calculateAdvisor()"><span class="slider"></span></span> Caerleon
+            <span class="switch"><input type="checkbox" value="Caerleon" data-city="Caerleon" checked><span class="slider"></span></span> Caerleon
           </label>
           <label class="toggle-inline-item">
-            <span class="switch"><input type="checkbox" value="Brecilien" data-city="Brecilien" checked onchange="calculateAdvisor()"><span class="slider"></span></span> Brecilien
+            <span class="switch"><input type="checkbox" value="Brecilien" data-city="Brecilien" checked><span class="slider"></span></span> Brecilien
           </label>
           <label class="toggle-inline-item">
-            <span class="switch"><input type="checkbox" value="Black Market" data-city="Black Market" checked onchange="calculateAdvisor()"><span class="slider"></span></span> Black Market
+            <span class="switch"><input type="checkbox" value="Black Market" data-city="Black Market" checked><span class="slider"></span></span> Black Market
           </label>
         </div>
 
@@ -387,21 +389,21 @@
         <!-- Qualities -->
         <div class="filter-group" id="qualityToggles">
           <span class="filter-group-title">Qualities:</span>
-          <label class="toggle-inline-item"><span class="switch"><input type="checkbox" value="Normal" checked onchange="calculateAdvisor()"><span class="slider"></span></span> Normal</label>
-          <label class="toggle-inline-item"><span class="switch"><input type="checkbox" value="Good" checked onchange="calculateAdvisor()"><span class="slider"></span></span> Good</label>
-          <label class="toggle-inline-item"><span class="switch"><input type="checkbox" value="Outstanding" checked onchange="calculateAdvisor()"><span class="slider"></span></span> Outstanding</label>
-          <label class="toggle-inline-item"><span class="switch"><input type="checkbox" value="Excellent" checked onchange="calculateAdvisor()"><span class="slider"></span></span> Excellent</label>
-          <label class="toggle-inline-item"><span class="switch"><input type="checkbox" value="Masterpiece" checked onchange="calculateAdvisor()"><span class="slider"></span></span> Masterpiece</label>
+          <label class="toggle-inline-item"><span class="switch"><input type="checkbox" value="Normal" checked><span class="slider"></span></span> Normal</label>
+          <label class="toggle-inline-item"><span class="switch"><input type="checkbox" value="Good" checked><span class="slider"></span></span> Good</label>
+          <label class="toggle-inline-item"><span class="switch"><input type="checkbox" value="Outstanding" checked><span class="slider"></span></span> Outstanding</label>
+          <label class="toggle-inline-item"><span class="switch"><input type="checkbox" value="Excellent" checked><span class="slider"></span></span> Excellent</label>
+          <label class="toggle-inline-item"><span class="switch"><input type="checkbox" value="Masterpiece" checked><span class="slider"></span></span> Masterpiece</label>
         </div>
 
         <!-- Tiers -->
         <div class="filter-group" id="tierToggles">
           <span class="filter-group-title">Tier:</span>
-          <label class="toggle-inline-item"><span class="switch"><input type="checkbox" value="T4" checked onchange="calculateAdvisor()"><span class="slider"></span></span> T4</label>
-          <label class="toggle-inline-item"><span class="switch"><input type="checkbox" value="T5" checked onchange="calculateAdvisor()"><span class="slider"></span></span> T5</label>
-          <label class="toggle-inline-item"><span class="switch"><input type="checkbox" value="T6" checked onchange="calculateAdvisor()"><span class="slider"></span></span> T6</label>
-          <label class="toggle-inline-item"><span class="switch"><input type="checkbox" value="T7" checked onchange="calculateAdvisor()"><span class="slider"></span></span> T7</label>
-          <label class="toggle-inline-item"><span class="switch"><input type="checkbox" value="T8" checked onchange="calculateAdvisor()"><span class="slider"></span></span> T8</label>
+          <label class="toggle-inline-item"><span class="switch"><input type="checkbox" value="T4" checked><span class="slider"></span></span> T4</label>
+          <label class="toggle-inline-item"><span class="switch"><input type="checkbox" value="T5" checked><span class="slider"></span></span> T5</label>
+          <label class="toggle-inline-item"><span class="switch"><input type="checkbox" value="T6" checked><span class="slider"></span></span> T6</label>
+          <label class="toggle-inline-item"><span class="switch"><input type="checkbox" value="T7" checked><span class="slider"></span></span> T7</label>
+          <label class="toggle-inline-item"><span class="switch"><input type="checkbox" value="T8" checked><span class="slider"></span></span> T8</label>
         </div>
       </div>
 
@@ -434,100 +436,8 @@
       "Caerleon": "var(--color-caerleon)",
       "Brecilien": "var(--color-brecilien)",
       "Black Market": "var(--color-black-market)"
-    ];
-
-    function calculateAdvisor() {
-      const isPremium = document.getElementById('hasPremium').value === 'true';
-      const sortBy = document.getElementById('sortBy').value;
-      
-      const activeLocations = Array.from(document.querySelectorAll('#locationToggles input:checked')).map(cb => cb.value);
-      const activeQualities = Array.from(document.querySelectorAll('#qualityToggles input:checked')).map(cb => cb.value);
-      const activeTiers = Array.from(document.querySelectorAll('#tierToggles input:checked')).map(cb => cb.value);
-
-      const setupFeeRate = 0.025;
-      const salesTaxRate = isPremium ? 0.04 : 0.08;
-
-      let validRoutes = masterRoutesData.filter(route => {
-        return activeLocations.includes(route.from) && 
-               activeLocations.includes(route.to) && 
-               activeQualities.includes(route.quality) && 
-               activeTiers.includes(route.tier);
-      }).map(route => {
-        const totalBuyCost = route.buy * (1 + setupFeeRate);
-        const totalSellNet = route.sell * (1 - setupFeeRate - salesTaxRate);
-        const profitPerItem = totalSellNet - totalBuyCost;
-        const profitMargin = (profitPerItem / totalBuyCost) * 100;
-
-        return {
-          ...route,
-          profitPerItem,
-          profitMargin
-        };
-      });
-
-      // Sorting Logic
-      if (sortBy === 'name') {
-        validRoutes.sort((a, b) => a.itemName.localeCompare(b.itemName));
-      } else if (sortBy === 'lastUpdate') {
-        validRoutes.sort((a, b) => a.updateMinutes - b.updateMinutes);
-      } else if (sortBy === 'margin') {
-        validRoutes.sort((a, b) => b.profitMargin - a.profitMargin);
-      }
-
-      const tableBody = document.getElementById('tableBody');
-      tableBody.innerHTML = ''; 
-
-      if (validRoutes.length === 0) {
-        tableBody.innerHTML = `<div class="empty-state">No matching trade routes found. Try adjusting your top filters.</div>`;
-        return;
-      }
-
-      validRoutes.forEach((route) => {
-        const profitClass = route.profitPerItem >= 0 ? 'profit-positive' : 'profit-negative';
-
-        const rowHTML = `
-          <div class="table-row">
-            
-            <div class="item-title-container">
-              <div class="item-title">${route.itemName}</div>
-              <div class="item-subtext">${route.quality}</div>
-            </div>
-
-            <div><span class="badge-update">${route.lastUpdate}</span></div>
-
-            <div class="price-cell">
-              <div class="city-info">
-                <span class="city-dot" style="background-color: ${cityColors[route.from] || '#ffffff'};"></span>
-                ${route.from}
-              </div>
-              <div class="price-val">${route.buy.toLocaleString()} silver</div>
-            </div>
-
-            <div class="price-cell">
-              <div class="city-info">
-                <span class="city-dot" style="background-color: ${cityColors[route.to] || '#ffffff'};"></span>
-                ${route.to}
-              </div>
-              <div class="price-val">${route.sell.toLocaleString()} silver</div>
-            </div>
-
-            <div class="${profitClass}">
-              ${Math.round(route.profitPerItem).toLocaleString()} silver
-            </div>
-
-            <div class="margin-val">
-              ${route.profitMargin.toFixed(2)} %
-            </div>
-
-          </div>
-        `;
-
-        tableBody.innerHTML += rowHTML;
-      });
-    }
-
-    calculateAdvisor();
-    </script>
-      <script src="app.js"> </script>
-  </body>
+    };
+  </script>
+  <script src="app.js"></script>
+</body>
 </html>
