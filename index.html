@@ -58,10 +58,10 @@
       color: var(--accent-gold);
     }
 
-    /* Top Controls Area - Ensures clickable layers */
+    /* Top Controls Area */
     .top-controls-bar {
       position: relative;
-      z-index: 10;
+      z-index: 100;
       background: var(--panel-bg);
       border-bottom: 1px solid var(--panel-border);
       padding: 16px 24px;
@@ -98,6 +98,7 @@
       padding: 0 10px;
       font-size: 0.95rem;
       outline: none;
+      cursor: pointer;
     }
 
     .filter-section-row {
@@ -121,18 +122,23 @@
       margin-right: 4px;
     }
 
-    /* Horizontal Compact Toggles */
+    /* Horizontal Compact Toggles Fix */
     .toggle-inline-item {
       display: flex;
       align-items: center;
-      gap: 6px;
+      gap: 8px;
       font-size: 0.85rem;
       cursor: pointer;
       user-select: none;
-      background: rgba(15, 23, 42, 0.4);
+      background: rgba(15, 23, 42, 0.6);
       padding: 5px 10px;
       border-radius: 6px;
       border: 1px solid var(--panel-border);
+      position: relative;
+    }
+
+    .toggle-inline-item:hover {
+      border-color: var(--text-muted);
     }
 
     .switch {
@@ -140,21 +146,28 @@
       display: inline-block;
       width: 28px;
       height: 16px;
+      pointer-events: none; /* Passes click directly to label/checkbox */
     }
 
     .switch input {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
       opacity: 0;
-      width: 0;
-      height: 0;
+      cursor: pointer;
+      pointer-events: auto; /* Checkbox catches click */
+      z-index: 2;
     }
 
     .slider {
       position: absolute;
-      cursor: pointer;
       top: 0; left: 0; right: 0; bottom: 0;
       background-color: #334155;
       transition: .2s;
       border-radius: 20px;
+      pointer-events: none; /* Prevents visual slider from stealing click */
     }
 
     .slider:before {
@@ -196,7 +209,7 @@
 
     .advisor-btn:hover { background-color: var(--accent-gold-hover); }
 
-    /* Main Content Area / Compact Table Layout */
+    /* Main Content Area */
     main.main-content {
       flex: 1;
       padding: 20px 24px;
@@ -233,7 +246,6 @@
       background-color: #1e293b;
     }
 
-    /* Item Name Column */
     .item-title-container {
       display: flex;
       flex-direction: column;
@@ -252,7 +264,6 @@
       font-weight: 600;
     }
 
-    /* Last Update Badge */
     .badge-update {
       background: #142921;
       color: #4ade80;
@@ -274,7 +285,6 @@
       border-radius: 50%;
     }
 
-    /* Price / City Cell */
     .price-cell {
       display: flex;
       flex-direction: column;
@@ -339,7 +349,6 @@
           </select>
         </div>
 
-        <!-- Sort By Dropdown -->
         <div class="input-group">
           <label for="sortBy">Sort By:</label>
           <select id="sortBy">
@@ -353,7 +362,6 @@
       </div>
 
       <div class="filter-section-row">
-        
         <!-- Locations -->
         <div class="filter-group" id="locationToggles">
           <span class="filter-group-title">Locations:</span>
@@ -382,7 +390,6 @@
             <span class="switch"><input type="checkbox" value="Black Market" data-city="Black Market" checked><span class="slider"></span></span> Black Market
           </label>
         </div>
-
       </div>
 
       <div class="filter-section-row">
@@ -411,7 +418,6 @@
 
     <!-- Table Header and Rows -->
     <main class="main-content">
-      
       <div class="table-header">
         <div>Item Name</div>
         <div style="text-align: right;">Last Update</div>
@@ -422,22 +428,9 @@
       </div>
 
       <div id="tableBody"></div>
-
     </main>
   </div>
 
-  <script>
-    const cityColors = {
-      "Fort Sterling": "var(--color-fort-sterling)",
-      "Lymhurst": "var(--color-lymhurst)",
-      "Bridgewatch": "var(--color-bridgewatch)",
-      "Martlock": "var(--color-martlock)",
-      "Thetford": "var(--color-thetford)",
-      "Caerleon": "var(--color-caerleon)",
-      "Brecilien": "var(--color-brecilien)",
-      "Black Market": "var(--color-black-market)"
-    };
-  </script>
   <script src="app.js"></script>
 </body>
 </html>
