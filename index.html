@@ -27,12 +27,11 @@
     html, body {
       width: 100%;
       height: 100%;
-      overflow: hidden; /* Prevents global page scroll */
+      overflow: hidden;
       background-color: var(--bg-dark);
       color: var(--text-main);
     }
 
-    /* Span layout across the entire viewport screen */
     .wireframe-container {
       width: 100vw;
       height: 100vh;
@@ -41,12 +40,11 @@
       grid-template-areas: 
         "header header"
         "sidebar main-cols";
-      grid-template-columns: 260px 1fr;
+      grid-template-columns: 280px 1fr;
       grid-template-rows: 60px 1fr;
     }
 
-    /* Form Controls */
-    input[type="number"], select {
+    input[type="number"] {
       width: 100%;
       height: 38px;
       background-color: var(--bg-dark);
@@ -58,7 +56,7 @@
       transition: border 0.2s;
     }
 
-    input[type="number"]:focus, select:focus {
+    input[type="number"]:focus {
       border-color: var(--accent-gold);
     }
 
@@ -80,7 +78,6 @@
       transform: scale(0.98);
     }
 
-    /* Header */
     header.sketch-header {
       grid-area: header;
       background: rgba(15, 23, 42, 0.8);
@@ -93,15 +90,15 @@
       color: var(--accent-gold);
     }
 
-    /* Sidebar Layout */
     aside.sketch-sidebar {
       grid-area: sidebar;
       border-right: 2px solid var(--panel-border);
       display: flex;
       flex-direction: column;
-      gap: 18px;
+      gap: 16px;
       padding: 20px 15px;
       background: var(--bg-dark);
+      overflow-y: auto;
     }
 
     .input-label-group {
@@ -116,6 +113,35 @@
       font-weight: 600;
     }
 
+    /* Multi-select Checkbox Group for Blacklist */
+    .checkbox-group {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      background: var(--panel-bg);
+      padding: 10px;
+      border: 1px solid var(--panel-border);
+      border-radius: 6px;
+      max-height: 220px;
+      overflow-y: auto;
+    }
+
+    .checkbox-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.85rem;
+      cursor: pointer;
+      color: var(--text-main);
+    }
+
+    .checkbox-item input[type="checkbox"] {
+      accent-color: var(--accent-gold);
+      width: 16px;
+      height: 16px;
+      cursor: pointer;
+    }
+
     #runBtn { 
       width: 100%;
       height: 42px;
@@ -123,38 +149,38 @@
       font-size: 1rem;
     }
 
-    /* Main Area with Scrollable Container on the Right */
     main.sketch-main-cols {
       grid-area: main-cols;
       display: flex;
       flex-direction: column;
       padding: 24px;
-      height: calc(100vh - 60px); /* Fill remaining vertical space */
+      height: calc(100vh - 60px);
       overflow: hidden;
     }
 
-    /* Scrollable Box Grid Container */
     .scrollable-cards-container {
       flex: 1;
       display: grid;
       grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
       gap: 20px;
-      padding-right: 12px; /* Space for scrollbar */
-      overflow-y: auto; /* Adds vertical scrollbar on right when items overflow */
+      padding-right: 12px;
+      overflow-y: auto;
     }
 
-    /* Custom Dark & Gold Scrollbar Styling */
-    .scrollable-cards-container::-webkit-scrollbar {
-      width: 10px;
+    /* Custom Scrollbar Styling */
+    .scrollable-cards-container::-webkit-scrollbar,
+    .checkbox-group::-webkit-scrollbar {
+      width: 8px;
     }
-    .scrollable-cards-container::-webkit-scrollbar-track {
+    .scrollable-cards-container::-webkit-scrollbar-track,
+    .checkbox-group::-webkit-scrollbar-track {
       background: var(--bg-dark);
       border-radius: 6px;
     }
-    .scrollable-cards-container::-webkit-scrollbar-thumb {
+    .scrollable-cards-container::-webkit-scrollbar-thumb,
+    .checkbox-group::-webkit-scrollbar-thumb {
       background: var(--panel-border);
       border-radius: 6px;
-      border: 2px solid var(--bg-dark);
     }
     .scrollable-cards-container::-webkit-scrollbar-thumb:hover {
       background: var(--accent-gold);
@@ -187,7 +213,7 @@
       display: flex;
       justify-content: space-between;
       border-bottom: 1px dashed var(--panel-border);
-      padding: 10px 0;
+      padding: 8px 0;
       font-size: 14px;
     }
 
@@ -198,7 +224,6 @@
     .profit-positive { color: var(--accent-green); }
     .profit-negative { color: var(--accent-red); }
 
-    /* Bottom area for Retry button */
     .retry-area {
       display: flex;
       justify-content: flex-start;
@@ -212,6 +237,14 @@
       height: 42px;
       font-size: 0.95rem;
     }
+
+    .empty-state {
+      grid-column: 1 / -1;
+      text-align: center;
+      padding: 40px;
+      color: var(--text-muted);
+      font-size: 1.1rem;
+    }
   </style>
 </head>
 <body>
@@ -222,7 +255,6 @@
       ⚔️ Albion Advisor — Market & Trade Route Assistant
     </header>
 
-    <!-- Sidebar Control Panel -->
     <aside class="sketch-sidebar">
       
       <!-- Budget Input -->
@@ -231,120 +263,31 @@
         <input type="number" id="budget" name="budget" value="1000000" oninput="calculateAdvisor();">
       </div>
 
-      <!-- Whitelist Cities Select -->
+      <!-- Blacklist Checkbox Group -->
       <div class="input-label-group">
-        <label for="whitelist">City Whitelist:</label>
-        <select id="whitelist" name="whitelist" onchange="calculateAdvisor();">
-          <option value="all">All Cities</option>
-          <option value="Caerleon">Caerleon</option>
-          <option value="Bridgewatch">Bridgewatch</option>
-          <option value="Fort Sterling">Fort Sterling</option>
-          <option value="Lymhurst">Lymhurst</option>
-          <option value="Martlock">Martlock</option>
-          <option value="Thetford">Thetford</option>
-          <option value="Brecilien">Brecilien</option>
-        </select>
+        <label>Blacklist Cities (Multiple):</label>
+        <div class="checkbox-group" id="blacklistContainer">
+          <label class="checkbox-item"><input type="checkbox" value="Caerleon" onchange="calculateAdvisor()"> Caerleon</label>
+          <label class="checkbox-item"><input type="checkbox" value="Bridgewatch" onchange="calculateAdvisor()"> Bridgewatch</label>
+          <label class="checkbox-item"><input type="checkbox" value="Fort Sterling" onchange="calculateAdvisor()"> Fort Sterling</label>
+          <label class="checkbox-item"><input type="checkbox" value="Lymhurst" onchange="calculateAdvisor()"> Lymhurst</label>
+          <label class="checkbox-item"><input type="checkbox" value="Martlock" onchange="calculateAdvisor()"> Martlock</label>
+          <label class="checkbox-item"><input type="checkbox" value="Thetford" onchange="calculateAdvisor()"> Thetford</label>
+          <label class="checkbox-item"><input type="checkbox" value="Brecilien" onchange="calculateAdvisor()"> Brecilien</label>
+        </div>
       </div>
 
-      <!-- Blacklist Cities Select -->
-      <div class="input-label-group">
-        <label for="blacklist">City Blacklist:</label>
-        <select id="blacklist" name="blacklist" onchange="calculateAdvisor();">
-          <option value="none">None</option>
-          <option value="Caerleon">Caerleon</option>
-          <option value="Bridgewatch">Bridgewatch</option>
-          <option value="Fort Sterling">Fort Sterling</option>
-          <option value="Lymhurst">Lymhurst</option>
-          <option value="Martlock">Martlock</option>
-          <option value="Thetford">Thetford</option>
-          <option value="Brecilien">Brecilien</option>
-        </select>
-      </div>
-
-      <!-- Run Button -->
       <button id="runBtn" class="advisor-btn" onclick="calculateAdvisor();">RUN</button>
 
     </aside>
 
-    <!-- Main Output Display -->
     <main class="sketch-main-cols">
       
-      <!-- Scrollable Container containing I, II, III, IV, V... -->
+      <!-- Dynamic Scrollable Container -->
       <div class="scrollable-cards-container" id="cardsWrapper">
-        
-        <!-- Box I -->
-        <div class="data-col">
-          <div class="col-label">I</div>
-          <div class="data-display-item" style="margin-top: 8px;">
-            <span>Route:</span>
-            <span>from <strong class="fromLoc" style="color: var(--accent-gold);">Caerleon</strong> ➔ <strong class="toLoc" style="color: var(--accent-gold);">Martlock</strong></span>
-          </div>
-          <div class="data-display-item"><span>Profit:</span><strong class="profitVal profit-positive">0 Silver</strong></div>
-          <div class="data-display-item"><span>Buy Price:</span><strong class="buyVal">0</strong></div>
-          <div class="data-display-item"><span>Sell Price:</span><strong class="sellVal">0</strong></div>
-          <div class="data-display-item"><span>Quantity:</span><strong class="qtyVal">0</strong></div>
-          <div class="data-display-item"><span>Profit per item:</span><strong class="pPerQVal">0</strong></div>
-        </div>
-
-        <!-- Box II -->
-        <div class="data-col">
-          <div class="col-label">II</div>
-          <div class="data-display-item" style="margin-top: 8px;">
-            <span>Route:</span>
-            <span>from <strong class="fromLoc" style="color: var(--accent-gold);">Lymhurst</strong> ➔ <strong class="toLoc" style="color: var(--accent-gold);">Thetford</strong></span>
-          </div>
-          <div class="data-display-item"><span>Profit:</span><strong class="profitVal profit-positive">0 Silver</strong></div>
-          <div class="data-display-item"><span>Buy Price:</span><strong class="buyVal">0</strong></div>
-          <div class="data-display-item"><span>Sell Price:</span><strong class="sellVal">0</strong></div>
-          <div class="data-display-item"><span>Quantity:</span><strong class="qtyVal">0</strong></div>
-          <div class="data-display-item"><span>Profit per item:</span><strong class="pPerQVal">0</strong></div>
-        </div>
-
-        <!-- Box III -->
-        <div class="data-col">
-          <div class="col-label">III</div>
-          <div class="data-display-item" style="margin-top: 8px;">
-            <span>Route:</span>
-            <span>from <strong class="fromLoc" style="color: var(--accent-gold);">Bridgewatch</strong> ➔ <strong class="toLoc" style="color: var(--accent-gold);">Fort Sterling</strong></span>
-          </div>
-          <div class="data-display-item"><span>Profit:</span><strong class="profitVal profit-positive">0 Silver</strong></div>
-          <div class="data-display-item"><span>Buy Price:</span><strong class="buyVal">0</strong></div>
-          <div class="data-display-item"><span>Sell Price:</span><strong class="sellVal">0</strong></div>
-          <div class="data-display-item"><span>Quantity:</span><strong class="qtyVal">0</strong></div>
-          <div class="data-display-item"><span>Profit per item:</span><strong class="pPerQVal">0</strong></div>
-        </div>
-
-        <!-- Box IV -->
-        <div class="data-col">
-          <div class="col-label">IV</div>
-          <div class="data-display-item" style="margin-top: 8px;">
-            <span>Route:</span>
-            <span>from <strong class="fromLoc" style="color: var(--accent-gold);">Brecilien</strong> ➔ <strong class="toLoc" style="color: var(--accent-gold);">Caerleon</strong></span>
-          </div>
-          <div class="data-display-item"><span>Profit:</span><strong class="profitVal profit-positive">0 Silver</strong></div>
-          <div class="data-display-item"><span>Buy Price:</span><strong class="buyVal">0</strong></div>
-          <div class="data-display-item"><span>Sell Price:</span><strong class="sellVal">0</strong></div>
-          <div class="data-display-item"><span>Quantity:</span><strong class="qtyVal">0</strong></div>
-          <div class="data-display-item"><span>Profit per item:</span><strong class="pPerQVal">0</strong></div>
-        </div>
-
-        <!-- Box V -->
-        <div class="data-col">
-          <div class="col-label">V</div>
-          <div class="data-display-item" style="margin-top: 8px;">
-            <span>Route:</span>
-            <span>from <strong class="fromLoc" style="color: var(--accent-gold);">Martlock</strong> ➔ <strong class="toLoc" style="color: var(--accent-gold);">Lymhurst</strong></span>
-          </div>
-          <div class="data-display-item"><span>Profit:</span><strong class="profitVal profit-positive">0 Silver</strong></div>
-          <div class="data-display-item"><span>Buy Price:</span><strong class="buyVal">0</strong></div>
-          <div class="data-display-item"><span>Sell Price:</span><strong class="sellVal">0</strong></div>
-          <div class="data-display-item"><span>Quantity:</span><strong class="qtyVal">0</strong></div>
-          <div class="data-display-item"><span>Profit per item:</span><strong class="pPerQVal">0</strong></div>
-        </div>
-
+        <!-- Cards will be populated here dynamically -->
       </div>
 
-      <!-- Retry Area -->
       <div class="retry-area">
         <button id="retryBtn" class="advisor-btn" onclick="calculateAdvisor();">RETRY</button>
       </div>
@@ -353,74 +296,107 @@
   </div>
 
   <script>
-    const routesData = [
-      { from: "Caerleon", to: "Martlock", buy: 2000, sell: 2800 },
-      { from: "Lymhurst", to: "Thetford", buy: 1500, sell: 2150 },
-      { from: "Bridgewatch", to: "Fort Sterling", buy: 3400, sell: 4600 },
-      { from: "Brecilien", to: "Caerleon", buy: 8200, sell: 11500 },
-      { from: "Martlock", to: "Lymhurst", buy: 1200, sell: 1750 }
+    // Sample master dataset containing item names and route prices
+    const masterRoutesData = [
+      { itemName: "T6.1 Claws", from: "Caerleon", to: "Martlock", buy: 22000, sell: 31000 },
+      { itemName: "T8 Grandmaster Bag", from: "Lymhurst", to: "Thetford", buy: 150000, sell: 185000 },
+      { itemName: "T7 Swiftclaw", from: "Bridgewatch", to: "Fort Sterling", buy: 120000, sell: 142000 },
+      { itemName: "T8.3 Royal Jacket", from: "Brecilien", to: "Caerleon", buy: 1200000, sell: 1480000 },
+      { itemName: "T5 Poison Potion", from: "Martlock", to: "Lymhurst", buy: 1200, sell: 1750 },
+      { itemName: "T6 Bloodletter", from: "Fort Sterling", to: "Bridgewatch", buy: 45000, sell: 58000 },
+      { itemName: "T7 Pork Omelette", from: "Thetford", to: "Brecilien", buy: 3400, sell: 4900 }
     ];
+
+    // Helper to convert index to Roman Numerals (I, II, III, IV...)
+    function toRoman(num) {
+      const lookup = { M:1000, CM:900, D:500, CD:400, C:100, XC:90, L:50, XL:40, X:10, IX:9, V:5, IV:4, I:1 };
+      let roman = '';
+      for (let i in lookup) {
+        while (num >= lookup[i]) {
+          roman += i;
+          num -= lookup[i];
+        }
+      }
+      return roman;
+    }
 
     function calculateAdvisor() {
       const budgetVal = parseFloat(document.getElementById('budget').value) || 0;
-      const whitelistCity = document.getElementById('whitelist').value;
-      const blacklistCity = document.getElementById('blacklist').value;
       
-      const cards = document.querySelectorAll('.data-col');
+      // Get all checked blacklisted cities
+      const checkedBoxes = document.querySelectorAll('#blacklistContainer input[type="checkbox"]:checked');
+      const blacklistedCities = Array.from(checkedBoxes).map(cb => cb.value);
 
-      cards.forEach((card, index) => {
-        const route = routesData[index % routesData.length];
-        let fromCity = route.from;
-        let toCity = route.to;
+      // Filter out any routes where origin OR destination matches a blacklisted city
+      const validRoutes = masterRoutesData.filter(route => {
+        const isFromBlacklisted = blacklistedCities.includes(route.from);
+        const isToBlacklisted = blacklistedCities.includes(route.to);
+        return !isFromBlacklisted && !isToBlacklisted;
+      });
 
-        if (whitelistCity !== 'all') fromCity = whitelistCity;
-        if (blacklistCity !== 'none' && fromCity === blacklistCity) fromCity = "Fort Sterling";
+      const cardsWrapper = document.getElementById('cardsWrapper');
+      cardsWrapper.innerHTML = ''; // Clear container
 
-        card.querySelector('.fromLoc').innerText = fromCity;
-        card.querySelector('.toLoc').innerText = toCity;
+      if (validRoutes.length === 0) {
+        cardsWrapper.innerHTML = `<div class="empty-state">No trade routes found matching your criteria. Try unchecking some blacklisted cities!</div>`;
+        return;
+      }
 
-        const profitEl = card.querySelector('.profitVal');
+      const setupFeeRate = 0.025;
+      const salesTaxRate = 0.04;
 
-        if (budgetVal <= 0) {
-          profitEl.innerText = '0 Silver';
-          profitEl.className = 'profitVal profit-negative';
-          card.querySelector('.buyVal').innerText = '0';
-          card.querySelector('.sellVal').innerText = '0';
-          card.querySelector('.qtyVal').innerText = '0';
-          card.querySelector('.pPerQVal').innerText = '0';
-          return;
+      // Render cards for filtered routes
+      validRoutes.forEach((route, index) => {
+        const romanNum = toRoman(index + 1);
+        
+        let qtyToBuy = 0;
+        let netProfit = 0;
+        let profitPerUnit = 0;
+        let profitClass = 'profit-negative';
+        let profitText = '0 Silver';
+
+        if (budgetVal > 0) {
+          qtyToBuy = Math.floor(budgetVal / (route.buy * (1 + setupFeeRate)));
+          
+          if (qtyToBuy > 0) {
+            const totalBuyCost = route.buy * (1 + setupFeeRate) * qtyToBuy;
+            const totalSellGross = route.sell * qtyToBuy;
+            const setupFees = (route.sell * setupFeeRate * qtyToBuy); 
+            const salesTax = totalSellGross * salesTaxRate;
+
+            netProfit = totalSellGross - totalBuyCost - setupFees - salesTax;
+            profitPerUnit = netProfit / qtyToBuy;
+            profitClass = netProfit >= 0 ? 'profit-positive' : 'profit-negative';
+            profitText = Math.round(netProfit).toLocaleString() + ' Silver';
+          } else {
+            profitText = 'Low Budget';
+          }
         }
 
-        const setupFeeRate = 0.025;
-        const salesTaxRate = 0.04;
-        
-        const qtyToBuy = Math.floor(budgetVal / (route.buy * (1 + setupFeeRate)));
-        
-        if (qtyToBuy <= 0) {
-          profitEl.innerText = 'Low Budget';
-          profitEl.className = 'profitVal profit-negative';
-          return;
-        }
+        const cardHTML = `
+          <div class="data-col">
+            <div class="col-label">${romanNum}</div>
+            <div class="data-display-item" style="margin-top: 8px;">
+              <span>item name:</span>
+              <strong style="color: var(--accent-gold);">${route.itemName}</strong>
+            </div>
+            <div class="data-display-item">
+              <span>Route:</span>
+              <span>from <strong style="color: var(--accent-gold);">${route.from}</strong> ➔ <strong style="color: var(--accent-gold);">${route.to}</strong></span>
+            </div>
+            <div class="data-display-item"><span>Profit:</span><strong class="${profitClass}">${profitText}</strong></div>
+            <div class="data-display-item"><span>Buy Price:</span><strong>${route.buy.toLocaleString()} Silver</strong></div>
+            <div class="data-display-item"><span>Sell Price:</span><strong>${route.sell.toLocaleString()} Silver</strong></div>
+            <div class="data-display-item"><span>Quantity:</span><strong>${qtyToBuy.toLocaleString()}</strong></div>
+            <div class="data-display-item"><span>Profit per item:</span><strong>${Math.round(profitPerUnit).toLocaleString()} Silver</strong></div>
+          </div>
+        `;
 
-        const totalBuyCost = route.buy * (1 + setupFeeRate) * qtyToBuy;
-        const totalSellGross = route.sell * qtyToBuy;
-        const setupFees = (route.sell * setupFeeRate * qtyToBuy); 
-        const salesTax = totalSellGross * salesTaxRate;
-
-        const netProfit = totalSellGross - totalBuyCost - setupFees - salesTax;
-        const profitPerUnit = netProfit / qtyToBuy;
-
-        profitEl.innerText = Math.round(netProfit).toLocaleString() + ' Silver';
-        profitEl.className = netProfit >= 0 ? 'profitVal profit-positive' : 'profitVal profit-negative';
-
-        card.querySelector('.buyVal').innerText = route.buy.toLocaleString() + ' Silver';
-        card.querySelector('.sellVal').innerText = route.sell.toLocaleString() + ' Silver';
-        card.querySelector('.qtyVal').innerText = qtyToBuy.toLocaleString();
-        card.querySelector('.pPerQVal').innerText = Math.round(profitPerUnit).toLocaleString() + ' Silver';
+        cardsWrapper.innerHTML += cardHTML;
       });
     }
 
-    // Number-only constraint enforcement for budget
+    // Numerical restriction listener for budget
     const budgetInput = document.getElementById('budget');
     budgetInput.addEventListener('keydown', function(e) {
       if (e.ctrlKey || e.metaKey) return;
