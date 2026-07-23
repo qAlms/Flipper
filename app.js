@@ -3,7 +3,11 @@ const AODP_EUROPE_URL = "https://europe.albion-online-data.com/api/v2/stats/pric
 
 function parseApiDate(dateStr) {
   if (!dateStr || dateStr.startsWith("0001-01-01")) return 0;
-  const timestamp = new Date(dateStr).getTime();
+  
+  // Force the browser to read the time as UTC by appending 'Z'
+  const utcDateStr = dateStr.endsWith('Z') ? dateStr : dateStr + 'Z';
+  const timestamp = new Date(utcDateStr).getTime();
+  
   return isNaN(timestamp) || timestamp <= 0 ? 0 : timestamp;
 }
 
@@ -21,34 +25,30 @@ function getQualityNumber(val) {
 function getUIFilters() {
   const checkboxes = Array.from(document.querySelectorAll('input[type="checkbox"]:checked'));
 
-  // Tiers
   let tiers = checkboxes
     .map(cb => cb.value.toUpperCase())
     .filter(val => val.startsWith('T') || ['4','5','6','7','8'].includes(val))
     .map(val => val.startsWith('T') ? val : `T${val}`);
   if (tiers.length === 0) tiers = ["T4", "T5", "T6", "T7", "T8"];
 
-  // Qualities
   let qualities = checkboxes
     .map(cb => getQualityNumber(cb.value))
     .filter(val => val >= 1 && val <= 5);
   if (qualities.length === 0) qualities = [1, 2, 3, 4, 5];
 
-  // Locations
   const knownCities = ["Fort Sterling", "Lymhurst", "Bridgewatch", "Martlock", "Thetford", "Caerleon", "Brecilien", "Black Market"];
   let locations = checkboxes
     .map(cb => cb.value)
     .filter(val => knownCities.some(city => city.toLowerCase() === val.toLowerCase()));
   if (locations.length === 0) locations = knownCities;
 
-  // Budget
   const budgetInput = document.getElementById('budget') || document.querySelector('input[type="number"]');
   const maxBudget = budgetInput ? Number(budgetInput.value) || Infinity : Infinity;
 
   return { tiers, qualities, locations, maxBudget };
 }
 
-// GENERATE ITEM IDS BASED ON CHECKED TIERS
+// GENERATE ITEM IDS
 function generateItemIds(tiers) {
   const baseItems = [
     "BAG", "CAPE", "MAIN_CLAW", "MOUNT_SWIFTCLAW", 
@@ -67,7 +67,7 @@ function generateItemIds(tiers) {
   return Array.from(new Set(items));
 }
 
-// FETCH DATA FROM API
+// FETCH API DATA
 async function fetchAndMergeData(itemIds, progressCallback) {
   if (itemIds.length === 0) return [];
 
@@ -154,7 +154,7 @@ window.calculateAdvisor = async function() {
   renderTable();
 };
 
-// RENDER TABLE FROM CACHED DATA
+// RENDER TABLE 
 window.renderTable = function() {
   const tableBody = document.getElementById('tableBody');
   if (!tableBody) return;
@@ -198,7 +198,6 @@ window.renderTable = function() {
         const netRevenue = sellEntry.sellPrice * (1 - setupFee - taxRate);
         const profit = netRevenue - totalCost;
         
-        // Skip unprofitable routes
         if (profit <= 0) continue;
 
         const profitMargin = (profit / totalCost) * 100;
