@@ -89,13 +89,17 @@ async function fetchAndMergeData(itemIds, progressCallback) {
         const data = await response.json();
         completed++;
         if (progressCallback) progressCallback(Math.round((completed / batches.length) * 100), completed, batches.length);
+        
         return data.map(item => ({
-          itemId: item.item_id,
-          city: item.city,
-          quality: item.quality,
-          buyPrice: item.sell_price_min || 0,
-          sellPrice: item.buy_price_max || 0,
-          updatedAt: Math.max(parseApiDate(item.sell_price_min_date), parseApiDate(item.buy_price_max_date))
+          itemId: item.item_id || item.ItemId,
+          city: item.city || item.City,
+          quality: item.quality || item.Quality || 1,
+          buyPrice: item.sell_price_min ?? item.SellPriceMin ?? 0,
+          sellPrice: item.buy_price_max ?? item.BuyPriceMax ?? 0,
+          updatedAt: Math.max(
+            parseApiDate(item.sell_price_min_date || item.SellPriceMinDate), 
+            parseApiDate(item.buy_price_max_date || item.BuyPriceMaxDate)
+          )
         }));
       }
     } catch (err) {
