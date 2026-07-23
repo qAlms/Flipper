@@ -1,7 +1,4 @@
-// Global memory cache
 window.cachedMarketData = [];
-
-// Official Albion Online Data Project - Europe Server
 const AODP_EUROPE_URL = "https://europe.albion-online-data.com/api/v2/stats/prices/";
 
 function parseApiDate(dateStr) {
@@ -20,47 +17,37 @@ function getQualityNumber(val) {
   return Number(val) || 1;
 }
 
-// 1. READ UI FILTERS
 function getUIFilters() {
   const checkboxes = Array.from(document.querySelectorAll('input[type="checkbox"]:checked'));
 
-  // Extract Tiers
   let tiers = checkboxes
     .map(cb => cb.value.toUpperCase())
     .filter(val => val.startsWith('T') || ['4','5','6','7','8'].includes(val))
     .map(val => val.startsWith('T') ? val : `T${val}`);
-
   if (tiers.length === 0) tiers = ["T4", "T5", "T6", "T7", "T8"];
 
-  // Extract Qualities
   let qualities = checkboxes
     .map(cb => getQualityNumber(cb.value))
     .filter(val => val >= 1 && val <= 5);
-
   if (qualities.length === 0) qualities = [1, 2, 3, 4, 5];
 
-  // Extract Locations
   const knownCities = ["Fort Sterling", "Lymhurst", "Bridgewatch", "Martlock", "Thetford", "Caerleon", "Brecilien", "Black Market"];
   let locations = checkboxes
     .map(cb => cb.value)
     .filter(val => knownCities.some(city => city.toLowerCase() === val.toLowerCase()));
-
   if (locations.length === 0) locations = knownCities;
 
-  // Extract Budget
   const budgetInput = document.querySelector('input[type="number"]') || document.getElementById('budget');
   const maxBudget = budgetInput ? Number(budgetInput.value) || Infinity : Infinity;
 
   return { tiers, qualities, locations, maxBudget };
 }
 
-// 2. GENERATE ITEM IDS
 function generateItemIds(tiers) {
   const baseItems = [
     "BAG", "CAPE", "MAIN_CLAW", "MOUNT_SWIFTCLAW", 
     "ARMOR_LEATHER_ROYAL", "POTION_HEAL", "HEAD_CLOTH_ROYAL", "SHOES_LEATHER_ROYAL"
   ];
-
   const items = [];
   tiers.forEach(tier => {
     baseItems.forEach(base => {
@@ -71,30 +58,10 @@ function generateItemIds(tiers) {
       }
     });
   });
-
   return Array.from(new Set(items));
 }
 
-// FETCH WITH TIMEOUT (Prevents freeze/stuck at 91%)
-async function fetchWithTimeout(resource, options = {}) {
-  const { timeout = 5000 } = options;
-  const controller = new AbortController();
-  const id = setTimeout(() => controller.abort(), timeout);
-
-  try {
-    const response = await fetch(resource, {
-      ...options,
-      signal: controller.signal
-    });
-    clearTimeout(id);
-    return response;
-  } catch (error) {
-    clearTimeout(id);
-    throw error;
-  }
-}
-
-// 3. FETCH DATA IN SMALL BATCHES
+// FAST PARALLEL FETCH WITH 3-SECOND HARD CUTOFF
 async function fetchAndMergeData(itemIds, progressCallback) {
   if (itemIds.length === 0) return [];
 
@@ -104,38 +71,39 @@ async function fetchAndMergeData(itemIds, progressCallback) {
     batches.push(itemIds.slice(i, i + BATCH_SIZE));
   }
 
-  let allResults = [];
   let completed = 0;
-
-  for (const batch of batches) {
+  
+  // Launch all batch requests simultaneously in parallel
+  const fetchPromises = batches.map(async (batch) => {
     const itemString = batch.join(",");
     const requestUrl = `${AODP_EUROPE_URL}${itemString}.json`;
 
     try {
-      const response = await fetchWithTimeout(requestUrl, { timeout: 5000 });
+      // Hard 3 second timeout using AbortSignal
+      const response = await fetch(requestUrl, { signal: AbortSignal.timeout(3000) });
       if (response.ok) {
         const data = await response.json();
-        const normalized = data.map(item => ({
+        completed++;
+        if (progressCallback) progressCallback(Math.round((completed / batches.length) * 100), completed, batches.length);
+        return data.map(item => ({
           itemId: item.item_id,
           city: item.city,
           quality: item.quality,
           buyPrice: item.sell_price_min || 0,
           sellPrice: item.buy_price_max || 0,
-          updatedAt: Math.max(
-            parseApiDate(item.sell_price_min_date),
-            parseApiDate(item.buy_price_max_date)
-          )
+          updatedAt: Math.max(parseApiDate(item.sell_price_min_date), parseApiDate(item.buy_price_max_date))
         }));
-        allResults.push(...normalized);
       }
     } catch (err) {
-      console.warn(`Batch request timed out or skipped: ${requestUrl}`);
+      // Silently drop timed-out batch
     }
-
     completed++;
-    const percent = Math.round((completed / batches.length) * 100);
-    if (progressCallback) progressCallback(percent, completed, batches.length);
-  }
+    if (progressCallback) progressCallback(Math.round((completed / batches.length) * 100), completed, batches.length);
+    return [];
+  });
+
+  const resultsArray = await Promise.all(fetchPromises);
+  const allResults = resultsArray.flat();
 
   const freshestMap = new Map();
   allResults.forEach(entry => {
@@ -149,7 +117,6 @@ async function fetchAndMergeData(itemIds, progressCallback) {
   return Array.from(freshestMap.values());
 }
 
-// 4. MAIN RUN EXECUTION
 window.calculateAdvisor = async function() {
   const tableBody = document.getElementById('tableBody');
   const { tiers } = getUIFilters();
@@ -175,32 +142,29 @@ window.calculateAdvisor = async function() {
     if (batchesEl) batchesEl.textContent = `${done}/${total}`;
   });
 
-  if (!window.cachedMarketData || window.cachedMarketData.length === 0) {
-    if (tableBody) {
-      tableBody.innerHTML = `<div style="padding: 20px; text-align: center; color: #f44336;">No market data received. Try clicking RUN again.</div>`;
-    }
-    return;
-  }
-
   renderTable();
 };
 
-// 5. RENDER & SORT LOCAL TABLE
 window.renderTable = function() {
   const tableBody = document.getElementById('tableBody');
-  if (!tableBody || !window.cachedMarketData || window.cachedMarketData.length === 0) return;
+  if (!tableBody) return;
+
+  if (!window.cachedMarketData || window.cachedMarketData.length === 0) {
+    tableBody.innerHTML = `<div style="padding: 20px; text-align: center; color: #aaa;">No market data returned. Click RUN to try again.</div>`;
+    return;
+  }
 
   const isPremium = document.getElementById('hasPremium')?.value === 'true' || 
                     document.querySelector('select')?.value?.includes('4%');
-  const sortBy = document.getElementById('sortBy')?.value || document.querySelectorAll('select')[1]?.value || 'margin';
+  const sortBy = document.getElementById('sortBy')?.value || 'margin';
   const taxRate = isPremium ? 0.04 : 0.08;
   const setupFee = 0.025;
 
   const { qualities, locations, maxBudget } = getUIFilters();
 
   let tradeRoutes = [];
-
   const itemsGrouped = {};
+
   window.cachedMarketData.forEach(entry => {
     if (!qualities.includes(Number(entry.quality))) return;
     const key = `${entry.itemId}_${entry.quality}`;
@@ -270,53 +234,33 @@ window.renderTable = function() {
           <div class="item-title">${route.itemId}</div>
           <div class="item-subtext">Quality: ${route.quality}</div>
         </div>
-
         <div><span class="badge-update">${timeDisplay}</span></div>
-
         <div class="price-cell">
           <div class="city-info">${route.fromCity}</div>
           <div class="price-val">${Math.round(route.buyPrice).toLocaleString()} silver</div>
         </div>
-
         <div class="price-cell">
           <div class="city-info">${route.toCity}</div>
           <div class="price-val">${Math.round(route.sellPrice).toLocaleString()} silver</div>
         </div>
-
-        <div class="${profitClass}">
-          ${Math.round(route.profit).toLocaleString()} silver
-        </div>
-
-        <div class="margin-val">
-          ${route.profitMargin.toFixed(2)} %
-        </div>
+        <div class="${profitClass}">${Math.round(route.profit).toLocaleString()} silver</div>
+        <div class="margin-val">${route.profitMargin.toFixed(2)} %</div>
       </div>
     `;
-
     tableBody.innerHTML += rowHTML;
   });
 };
 
-// AUTOMATIC EVENT BINDINGS FOR LIVE TOGGLING
 document.addEventListener('DOMContentLoaded', () => {
-  document.querySelectorAll('select, input').forEach(element => {
-    if (element.type === 'button' || element.tagName === 'BUTTON') return;
+  document.querySelectorAll('input, select').forEach(element => {
+    if (element.tagName === 'BUTTON') return;
     element.addEventListener('change', () => {
-      if (window.cachedMarketData && window.cachedMarketData.length > 0) {
-        window.renderTable();
-      }
-    });
-    element.addEventListener('input', () => {
-      if (window.cachedMarketData && window.cachedMarketData.length > 0) {
-        window.renderTable();
-      }
+      if (window.cachedMarketData?.length) window.renderTable();
     });
   });
 
   const runBtn = document.querySelector('button') || document.querySelector('.btn-run') || document.getElementById('runBtn');
-  if (runBtn) {
-    runBtn.addEventListener('click', window.calculateAdvisor);
-  }
+  if (runBtn) runBtn.addEventListener('click', window.calculateAdvisor);
 
   window.calculateAdvisor();
 });
