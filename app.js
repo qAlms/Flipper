@@ -45,29 +45,44 @@ function getUIFilters() {
   return { tiers, qualities, locations, maxBudget };
 }
 
-// EXPANDED ITEM GENERATOR FOR BETTER MARKET COVERAGE
+// CATEGORY-BASED ITEM GENERATOR 
 function generateItemIds(tiers) {
-  const baseItems = [
-    "BAG", "CAPE", "POTION_HEAL", "POTION_ENERGY", "FOOD_STEW", "FOOD_SALAD",
-    "MAIN_SWORD", "2H_CLAYMORE", "MAIN_AXE", "2H_GREATAXE", "MAIN_NATURESTAFF",
-    "ARMOR_CLOTH_SET1", "ARMOR_LEATHER_SET1", "ARMOR_PLATE_SET1",
-    "HEAD_CLOTH_SET1", "HEAD_LEATHER_SET1", "HEAD_PLATE_SET1",
-    "SHOES_CLOTH_SET1", "SHOES_LEATHER_SET1", "SHOES_PLATE_SET1",
-    "MOUNT_HORSE", "MOUNT_OX", "MOUNT_SWIFTCLAW"
+  // Broad item structural roots matching game asset naming conventions
+  const weaponCategories = [
+    "MAIN_SWORD", "2H_CLAYMORE", "DUALSWORDS", "CARVINGSWORD", "CLARENTBLADE", "KINGMAKER", "GALATINEPAIR", "INFINITYBLADE",
+    "MAIN_SPEAR", "SPEAR", "GLAIVE", "PIKE", "SPIRITHUNTER", "HERONSPEAR", "TRINITYSPEAR", "DAYBREAKER", "RIFTGLAIVE",
+    "MAIN_BOW", "BOW", "LONGBOW", "WARBOW", "WHISPERINGBOW", "BADONBOW", "WAILINGBOW", "MISTPIERCER", "SKYSTRIDERBOW",
+    "MAIN_SHAPESHIFTER", "2H_SHAPESHIFTER" // Shapeshifter Staff variants
   ];
-  
+
+  const armorCategories = [
+    // Helmets
+    "HEAD_CLOTH_SET1", "HEAD_CLOTH_SET2", "HEAD_CLOTH_SET3", "HEAD_CLOTH_ROYAL",
+    "HEAD_LEATHER_SET1", "HEAD_LEATHER_SET2", "HEAD_LEATHER_SET3", "HEAD_LEATHER_ROYAL",
+    "HEAD_PLATE_SET1", "HEAD_PLATE_SET2", "HEAD_PLATE_SET3", "HEAD_PLATE_ROYAL",
+    // Chest Armors
+    "ARMOR_CLOTH_SET1", "ARMOR_CLOTH_SET2", "ARMOR_CLOTH_SET3", "ARMOR_CLOTH_ROYAL",
+    "ARMOR_LEATHER_SET1", "ARMOR_LEATHER_SET2", "ARMOR_LEATHER_SET3", "ARMOR_LEATHER_ROYAL",
+    "ARMOR_PLATE_SET1", "ARMOR_PLATE_SET2", "ARMOR_PLATE_SET3", "ARMOR_PLATE_ROYAL",
+    // Shoes
+    "SHOES_CLOTH_SET1", "SHOES_CLOTH_SET2", "SHOES_CLOTH_SET3", "SHOES_CLOTH_ROYAL",
+    "SHOES_LEATHER_SET1", "SHOES_LEATHER_SET2", "SHOES_LEATHER_SET3", "SHOES_LEATHER_ROYAL",
+    "SHOES_PLATE_SET1", "SHOES_PLATE_SET2", "SHOES_PLATE_SET3", "SHOES_PLATE_ROYAL"
+  ];
+
+  const accessoryAndConsumables = [
+    "BAG", "CAPE", "CAPE_SET1", "POTION_HEAL", "POTION_ENERGY", "FOOD_STEW", "FOOD_SALAD"
+  ];
+
+  const allBaseTypes = [...weaponCategories, ...armorCategories, ...accessoryAndConsumables];
   const items = [];
+
   tiers.forEach(tier => {
-    baseItems.forEach(base => {
-      if (base.includes("MOUNT_")) {
-        if (tier === "T4" || tier === "T5" || tier === "T7") {
-          items.push(`${tier}_${base}`);
-        }
-      } else {
-        items.push(`${tier}_${base}`);
-      }
+    allBaseTypes.forEach(base => {
+      items.push(`${tier}_${base}`);
     });
   });
+
   return Array.from(new Set(items));
 }
 
