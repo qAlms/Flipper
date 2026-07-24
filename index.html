@@ -25,7 +25,7 @@
       --color-thetford: #a855f7;
       --color-caerleon: #ef4444;
       --color-brecilien: #06b6d4;
-      --color-black-market: #e2e8f0;
+      --color-black-market: #ffffff;
     }
 
     * {
@@ -122,6 +122,7 @@
       margin-right: 4px;
     }
 
+    /* Horizontal Compact Toggles Fix */
     .toggle-inline-item {
       display: flex;
       align-items: center;
@@ -145,7 +146,7 @@
       display: inline-block;
       width: 28px;
       height: 16px;
-      pointer-events: none;
+      pointer-events: none; /* Passes click directly to label/checkbox */
     }
 
     .switch input {
@@ -156,7 +157,7 @@
       height: 100%;
       opacity: 0;
       cursor: pointer;
-      pointer-events: auto;
+      pointer-events: auto; /* Checkbox catches click */
       z-index: 2;
     }
 
@@ -166,7 +167,7 @@
       background-color: #334155;
       transition: .2s;
       border-radius: 20px;
-      pointer-events: none;
+      pointer-events: none; /* Prevents visual slider from stealing click */
     }
 
     .slider:before {
@@ -300,11 +301,9 @@
     }
 
     .city-dot {
-      width: 8px;
-      height: 8px;
+      width: 9px;
+      height: 9px;
       border-radius: 50%;
-      display: inline-block;
-      box-shadow: 0 0 4px rgba(255, 255, 255, 0.2);
     }
 
     .price-val {
@@ -316,25 +315,30 @@
     .profit-positive { color: var(--accent-green); font-weight: 700; font-size: 1.05rem; text-align: right; }
     .profit-negative { color: var(--accent-red); font-weight: 700; font-size: 1.05rem; text-align: right; }
     .margin-val { font-weight: 700; font-size: 1.05rem; color: var(--accent-green); text-align: right; }
+
+    .empty-state {
+      text-align: center;
+      padding: 60px;
+      color: var(--text-muted);
+      font-size: 1.1rem;
+    }
   </style>
 </head>
 <body>
 
   <div class="app-container">
+    
     <header class="sketch-header">
       Albion Helper
     </header>
 
+    <!-- Top Filter Bar -->
     <div class="top-controls-bar">
+      
       <div class="top-row-inputs">
         <div class="input-group">
           <label for="budget">Budget (Silver):</label>
-          <input type="number" id="budget" value="5000000" style="width: 130px;">
-        </div>
-
-        <div class="input-group">
-          <label for="minProfit">Min Profit:</label>
-          <input type="number" id="minProfit" value="0" style="width: 120px;">
+          <input type="number" id="budget" value="5000000" style="width: 150px;">
         </div>
 
         <div class="input-group">
@@ -348,8 +352,7 @@
         <div class="input-group">
           <label for="sortBy">Sort By:</label>
           <select id="sortBy">
-            <option value="profit" selected>Highest Silver Profit</option>
-            <option value="margin">Profit Margin</option>
+            <option value="margin" selected>Profit Margin</option>
             <option value="name">Name</option>
             <option value="lastUpdate">Last Update</option>
           </select>
@@ -358,62 +361,62 @@
         <button id="runBtn" class="advisor-btn">RUN</button>
       </div>
 
-      <!-- Categories & Enchantments Row -->
       <div class="filter-section-row">
-        <div class="filter-group" id="categoryToggles">
-          <span class="filter-group-title">Category:</span>
-          <label class="toggle-inline-item"><span class="switch"><input type="checkbox" data-type="category" value="weapons" checked><span class="slider"></span></span> Weapons</label>
-          <label class="toggle-inline-item"><span class="switch"><input type="checkbox" data-type="category" value="armor" checked><span class="slider"></span></span> Armor</label>
-          <label class="toggle-inline-item"><span class="switch"><input type="checkbox" data-type="category" value="accessories" checked><span class="slider"></span></span> Accessories</label>
-        </div>
-
-        <div class="filter-group" id="enchantmentToggles">
-          <span class="filter-group-title">Enchant:</span>
-          <label class="toggle-inline-item"><span class="switch"><input type="checkbox" data-type="enchantment" value="0" checked><span class="slider"></span></span> .0</label>
-          <label class="toggle-inline-item"><span class="switch"><input type="checkbox" data-type="enchantment" value="1" checked><span class="slider"></span></span> .1</label>
-          <label class="toggle-inline-item"><span class="switch"><input type="checkbox" data-type="enchantment" value="2" checked><span class="slider"></span></span> .2</label>
-          <label class="toggle-inline-item"><span class="switch"><input type="checkbox" data-type="enchantment" value="3" checked><span class="slider"></span></span> .3</label>
-          <label class="toggle-inline-item"><span class="switch"><input type="checkbox" data-type="enchantment" value="4"><span class="slider"></span></span> .4</label>
-        </div>
-      </div>
-
-      <!-- Locations Row -->
-      <div class="filter-section-row">
+        <!-- Locations -->
         <div class="filter-group" id="locationToggles">
           <span class="filter-group-title">Locations:</span>
-          <label class="toggle-inline-item"><span class="switch"><input type="checkbox" value="Fort Sterling" data-city="Fort Sterling" checked><span class="slider"></span></span> Fort Sterling</label>
-          <label class="toggle-inline-item"><span class="switch"><input type="checkbox" value="Lymhurst" data-city="Lymhurst" checked><span class="slider"></span></span> Lymhurst</label>
-          <label class="toggle-inline-item"><span class="switch"><input type="checkbox" value="Bridgewatch" data-city="Bridgewatch" checked><span class="slider"></span></span> Bridgewatch</label>
-          <label class="toggle-inline-item"><span class="switch"><input type="checkbox" value="Martlock" data-city="Martlock" checked><span class="slider"></span></span> Martlock</label>
-          <label class="toggle-inline-item"><span class="switch"><input type="checkbox" value="Thetford" data-city="Thetford" checked><span class="slider"></span></span> Thetford</label>
-          <label class="toggle-inline-item"><span class="switch"><input type="checkbox" value="Caerleon" data-city="Caerleon" checked><span class="slider"></span></span> Caerleon</label>
-          <label class="toggle-inline-item"><span class="switch"><input type="checkbox" value="Brecilien" data-city="Brecilien" checked><span class="slider"></span></span> Brecilien</label>
-          <label class="toggle-inline-item"><span class="switch"><input type="checkbox" value="Black Market" data-city="Black Market" checked><span class="slider"></span></span> Black Market</label>
+          <label class="toggle-inline-item">
+            <span class="switch"><input type="checkbox" value="Fort Sterling" data-city="Fort Sterling" checked><span class="slider"></span></span> Fort Sterling
+          </label>
+          <label class="toggle-inline-item">
+            <span class="switch"><input type="checkbox" value="Lymhurst" data-city="Lymhurst" checked><span class="slider"></span></span> Lymhurst
+          </label>
+          <label class="toggle-inline-item">
+            <span class="switch"><input type="checkbox" value="Bridgewatch" data-city="Bridgewatch" checked><span class="slider"></span></span> Bridgewatch
+          </label>
+          <label class="toggle-inline-item">
+            <span class="switch"><input type="checkbox" value="Martlock" data-city="Martlock" checked><span class="slider"></span></span> Martlock
+          </label>
+          <label class="toggle-inline-item">
+            <span class="switch"><input type="checkbox" value="Thetford" data-city="Thetford" checked><span class="slider"></span></span> Thetford
+          </label>
+          <label class="toggle-inline-item">
+            <span class="switch"><input type="checkbox" value="Caerleon" data-city="Caerleon" checked><span class="slider"></span></span> Caerleon
+          </label>
+          <label class="toggle-inline-item">
+            <span class="switch"><input type="checkbox" value="Brecilien" data-city="Brecilien" checked><span class="slider"></span></span> Brecilien
+          </label>
+          <label class="toggle-inline-item">
+            <span class="switch"><input type="checkbox" value="Black Market" data-city="Black Market" checked><span class="slider"></span></span> Black Market
+          </label>
         </div>
       </div>
 
-      <!-- Qualities & Tiers Row -->
       <div class="filter-section-row">
+        <!-- Qualities -->
         <div class="filter-group" id="qualityToggles">
           <span class="filter-group-title">Qualities:</span>
-          <label class="toggle-inline-item"><span class="switch"><input type="checkbox" data-type="quality" value="Normal" checked><span class="slider"></span></span> Normal</label>
-          <label class="toggle-inline-item"><span class="switch"><input type="checkbox" data-type="quality" value="Good" checked><span class="slider"></span></span> Good</label>
-          <label class="toggle-inline-item"><span class="switch"><input type="checkbox" data-type="quality" value="Outstanding" checked><span class="slider"></span></span> Outstanding</label>
-          <label class="toggle-inline-item"><span class="switch"><input type="checkbox" data-type="quality" value="Excellent" checked><span class="slider"></span></span> Excellent</label>
-          <label class="toggle-inline-item"><span class="switch"><input type="checkbox" data-type="quality" value="Masterpiece" checked><span class="slider"></span></span> Masterpiece</label>
+          <label class="toggle-inline-item"><span class="switch"><input type="checkbox" value="Normal" checked><span class="slider"></span></span> Normal</label>
+          <label class="toggle-inline-item"><span class="switch"><input type="checkbox" value="Good" checked><span class="slider"></span></span> Good</label>
+          <label class="toggle-inline-item"><span class="switch"><input type="checkbox" value="Outstanding" checked><span class="slider"></span></span> Outstanding</label>
+          <label class="toggle-inline-item"><span class="switch"><input type="checkbox" value="Excellent" checked><span class="slider"></span></span> Excellent</label>
+          <label class="toggle-inline-item"><span class="switch"><input type="checkbox" value="Masterpiece" checked><span class="slider"></span></span> Masterpiece</label>
         </div>
 
+        <!-- Tiers -->
         <div class="filter-group" id="tierToggles">
           <span class="filter-group-title">Tier:</span>
-          <label class="toggle-inline-item"><span class="switch"><input type="checkbox" data-type="tier" value="T4" checked><span class="slider"></span></span> T4</label>
-          <label class="toggle-inline-item"><span class="switch"><input type="checkbox" data-type="tier" value="T5" checked><span class="slider"></span></span> T5</label>
-          <label class="toggle-inline-item"><span class="switch"><input type="checkbox" data-type="tier" value="T6" checked><span class="slider"></span></span> T6</label>
-          <label class="toggle-inline-item"><span class="switch"><input type="checkbox" data-type="tier" value="T7" checked><span class="slider"></span></span> T7</label>
-          <label class="toggle-inline-item"><span class="switch"><input type="checkbox" data-type="tier" value="T8" checked><span class="slider"></span></span> T8</label>
+          <label class="toggle-inline-item"><span class="switch"><input type="checkbox" value="T4" checked><span class="slider"></span></span> T4</label>
+          <label class="toggle-inline-item"><span class="switch"><input type="checkbox" value="T5" checked><span class="slider"></span></span> T5</label>
+          <label class="toggle-inline-item"><span class="switch"><input type="checkbox" value="T6" checked><span class="slider"></span></span> T6</label>
+          <label class="toggle-inline-item"><span class="switch"><input type="checkbox" value="T7" checked><span class="slider"></span></span> T7</label>
+          <label class="toggle-inline-item"><span class="switch"><input type="checkbox" value="T8" checked><span class="slider"></span></span> T8</label>
         </div>
       </div>
+
     </div>
 
+    <!-- Table Header and Rows -->
     <main class="main-content">
       <div class="table-header">
         <div>Item Name</div>
@@ -428,6 +431,6 @@
     </main>
   </div>
 
-  <script src="app_2.js"></script>
+  <script src="app.js"></script>
 </body>
 </html>
