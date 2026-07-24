@@ -145,6 +145,9 @@ function getUIFilters() {
   const budgetInput = document.getElementById('budget') || document.querySelector('input[type="number"]');
   const maxBudget = budgetInput ? Number(budgetInput.value) || Infinity : Infinity;
 
+  const minProfitInput = document.getElementById('minProfit');
+  const minProfit = minProfitInput ? Number(minProfitInput.value) || 0 : 0;
+
   const maxAgeEl = document.getElementById('maxAge');
   let maxAgeMinutes = 120;
   if (maxAgeEl) {
@@ -156,7 +159,7 @@ function getUIFilters() {
     }
   }
 
-  return { tiers, qualities, enchantments, locations, maxBudget, maxAgeMinutes, categories };
+  return { tiers, qualities, enchantments, locations, maxBudget, minProfit, maxAgeMinutes, categories };
 }
 
 function generateItemIds(tiers, enchantments, categories = ['weapons', 'armor', 'accessories']) {
@@ -401,7 +404,7 @@ window.renderTable = function() {
   const taxRate = isPremium ? 0.04 : 0.08;
   const setupFee = 0.025;
 
-  const { qualities, locations, maxBudget, maxAgeMinutes } = getUIFilters();
+  const { qualities, locations, maxBudget, minProfit, maxAgeMinutes } = getUIFilters();
   const now = Date.now();
 
   let tradeRoutes = [];
@@ -442,7 +445,7 @@ window.renderTable = function() {
         const netRevenue = sellEntry.sellPrice * (1 - setupFee - taxRate);
         const profit = netRevenue - totalCost;
         
-        if (profit <= 0) continue;
+        if (profit <= 0 || profit < minProfit) continue;
 
         const profitMargin = (profit / totalCost) * 100;
 
@@ -493,7 +496,7 @@ window.renderTable = function() {
   tableBody.innerHTML = '';
 
   if (tradeRoutes.length === 0) {
-    tableBody.innerHTML = `<div style="padding: 40px; text-align: center; color: #f59e0b;">No profitable trade routes found matching your filters (or all available prices were older than your <strong>Max Data Age</strong> filter).</div>`;
+    tableBody.innerHTML = `<div style="padding: 40px; text-align: center; color: #f59e0b;">No profitable trade routes found matching your filters (or all available prices fell below your <strong>Min Profit</strong> / <strong>Max Data Age</strong> thresholds).</div>`;
     return;
   }
 
