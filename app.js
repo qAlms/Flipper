@@ -294,26 +294,34 @@ const nameMap = {
     "CAPE_SMUGGLER": "Smuggler Cape"
 };
 
-// FORMAT ITEM ID INTO CLEAN READABLE NAME
 function formatItemName(itemId) {
   if (!itemId) return "";
-  const parts = itemId.split("_");
+  
+  let enchantment = "";
+  let cleanId = itemId;
+  if (itemId.includes("@")) {
+    const partsAt = itemId.split("@");
+    cleanId = partsAt[0];
+    enchantment = `.${partsAt[1]}`;
+  }
+
+  const parts = cleanId.split("_");
   const tier = parts[0];
   const baseKey = parts.slice(1).join("_").trim().toUpperCase();
 
+  let baseName = "";
   if (nameMap[baseKey]) {
-    return `${tier} ${nameMap[baseKey]}`;
+    baseName = nameMap[baseKey];
+  } else {
+    baseName = parts.slice(1).map(part => {
+      if (part.startsWith("SET")) return "Set " + part.replace("SET", "");
+      return part.charAt(0) + part.slice(1).toLowerCase();
+    }).join(" ");
   }
 
-  const fallbackName = parts.slice(1).map(part => {
-    if (part.startsWith("SET")) return "Set " + part.replace("SET", "");
-    return part.charAt(0) + part.slice(1).toLowerCase();
-  }).join(" ");
-
-  return `${tier} ${fallbackName}`;
+  return `${tier}${enchantment} ${baseName}`;
 }
 
-// READ UI FILTERS
 function getUIFilters() {
   const checkboxes = Array.from(document.querySelectorAll('input[type="checkbox"]:checked'));
 
@@ -329,6 +337,20 @@ function getUIFilters() {
     .filter(val => val >= 1 && val <= 5);
   if (qualities.length === 0) qualities = [1, 2, 3, 4, 5];
 
+  // Detect requested enchantments (0 = flat, 1-4 = enchanted)
+  let enchantments = checkboxes
+    .map(cb => {
+      const val = cb.value.trim();
+      if (/^[0-4]$/.test(val)) return Number(val);
+      if (/^\.[0-4]$/.test(val)) return Number(val.substring(1));
+      if (/^@?[0-4]$/.test(val)) return Number(val.replace('@', ''));
+      return null;
+    })
+    .filter(val => val !== null && val >= 0 && val <= 4);
+
+  // Default to normal (0) and enchantments (.1, .2, .3) if none specified
+  if (enchantments.length === 0) enchantments = [0, 1, 2, 3];
+
   const knownCities = ["Fort Sterling", "Lymhurst", "Bridgewatch", "Martlock", "Thetford", "Caerleon", "Brecilien", "Black Market"];
   let locations = checkboxes
     .map(cb => cb.value)
@@ -338,11 +360,10 @@ function getUIFilters() {
   const budgetInput = document.getElementById('budget') || document.querySelector('input[type="number"]');
   const maxBudget = budgetInput ? Number(budgetInput.value) || Infinity : Infinity;
 
-  return { tiers, qualities, locations, maxBudget };
+  return { tiers, qualities, enchantments, locations, maxBudget };
 }
 
-// CATEGORY-BASED ITEM GENERATOR 
-function generateItemIds(tiers) {
+function generateItemIds(tiers, enchantments) {
   const weaponCategories = [
     "MAIN_SWORD", "2H_SWORD", "MAIN_SCIMITAR_MORGANA", "2H_SCIMITAR_MORGANA", "MAIN_NINJASWORD", "2H_CLEAVER_HELL", "2H_DUALSCIMITAR_AVALON", "2H_SWORD_FEY",
     "MAIN_AXE", "2H_AXE", "2H_HALBERD", "2H_HALBERD_MORGANA", "2H_COMPOSITEAXE_KEEPER", "2H_SCYTHE_HELL", "2H_AXE_AVALON", "2H_AXE_FEY",
@@ -408,24 +429,31 @@ function generateItemIds(tiers) {
 
   tiers.forEach(tier => {
     allBaseTypes.forEach(base => {
-      items.push(`${tier}_${base}`);
+      enchantments.forEach(enc => {
+        if (enc === 0) {
+          items.push(`${tier}_${base}`);
+        } else {
+          items.push(`${tier}_${base}@${enc}`);
+        }
+      });
     });
   });
 
   return Array.from(new Set(items));
 }
 
-// FETCH API DATA (OPTIMIZED WITH LARGER BATCH SIZE AND CONTROLLED CONCURRENCY)
 async function fetchAndMergeData(itemIds, progressCallback) {
   if (itemIds.length === 0) return [];
 
-  const BATCH_SIZE = 35; // Increased batch size to reduce total requests
-  const CONCURRENCY_LIMIT = 5; // Limits simultaneous connections to prevent timeouts
+  const BATCH_SIZE = 35;
+  const CONCURRENCY_LIMIT = 5;
   const batches = [];
   
   for (let i = 0; i < itemIds.length; i += BATCH_SIZE) {
     batches.push(itemIds.slice(i, i + BATCH_SIZE));
   }
+
+  console.log(`Starting fetch: ${itemIds.length} items broken into ${batches.length} batches.`);
 
   let completed = 0;
   const allResults = [];
@@ -455,9 +483,11 @@ async function fetchAndMergeData(itemIds, progressCallback) {
             )
           }));
           allResults.push(...parsed);
+        } else {
+          console.warn(`API returned status ${response.status} for batch URL:`, requestUrl);
         }
       } catch (err) {
-        console.warn("API batch fetch error:", err);
+        console.warn("API batch fetch network error:", err);
       }
 
       completed++;
@@ -467,13 +497,13 @@ async function fetchAndMergeData(itemIds, progressCallback) {
     }
   }
 
-  // Run workers concurrently up to CONCURRENCY_LIMIT
   const workers = [];
   for (let i = 0; i < Math.min(CONCURRENCY_LIMIT, batches.length); i++) {
     workers.push(worker());
   }
 
   await Promise.all(workers);
+  console.log(`Fetch complete. Total raw entries collected: ${allResults.length}`);
 
   const freshestMap = new Map();
   allResults.forEach(entry => {
@@ -484,20 +514,20 @@ async function fetchAndMergeData(itemIds, progressCallback) {
     }
   });
 
+  console.log(`Unique filtered entries after deduping: ${freshestMap.size}`);
   return Array.from(freshestMap.values());
 }
 
-// MAIN RUN FUNCTION
 window.calculateAdvisor = async function() {
   const tableBody = document.getElementById('tableBody');
-  const { tiers } = getUIFilters();
-  const targetItems = generateItemIds(tiers);
+  const { tiers, enchantments } = getUIFilters();
+  const targetItems = generateItemIds(tiers, enchantments);
 
   if (tableBody) {
     tableBody.innerHTML = `
       <div style="padding: 40px; text-align: center; color: #f59e0b;">
         <div style="font-size: 1.2rem; font-weight: bold; margin-bottom: 8px;">
-          Searching Albion Europe Database: <span id="searchPercent">0%</span>
+          Searching Albion Europe Database (Incl. Enchantments): <span id="searchPercent">0%</span>
         </div>
         <div style="color: #94a3b8; font-size: 0.9rem;">
           Batch progress: <span id="searchBatches">0/${Math.ceil(targetItems.length / 35)}</span>
@@ -514,19 +544,18 @@ window.calculateAdvisor = async function() {
       if (batchesEl) batchesEl.textContent = `${done}/${total}`;
     });
   } catch (e) {
-    console.error("Failed to fetch data:", e);
+    console.error("Failed to fetch data inside calculateAdvisor:", e);
   }
 
   renderTable();
 };
 
-// RENDER TABLE 
 window.renderTable = function() {
   const tableBody = document.getElementById('tableBody');
   if (!tableBody) return;
 
   if (!window.cachedMarketData || window.cachedMarketData.length === 0) {
-    tableBody.innerHTML = `<div style="padding: 40px; text-align: center; color: #94a3b8;">Click <strong>RUN</strong> above to search for market deals.</div>`;
+    tableBody.innerHTML = `<div style="padding: 40px; text-align: center; color: #f59e0b;">Click <strong>RUN</strong> above to search for market deals.</div>`;
     return;
   }
 
@@ -583,7 +612,6 @@ window.renderTable = function() {
     }
   });
 
-  // Group by itemId|quality|toCity, keeping only the single best entry
   const bestRoutesMap = new Map();
   tradeRoutes.forEach(route => {
     const groupKey = `${route.itemId}|${route.quality}|${route.toCity}`;
@@ -601,7 +629,6 @@ window.renderTable = function() {
   });
   tradeRoutes = Array.from(bestRoutesMap.values());
 
-  // Re-sort the unique list of routes
   if (sortBy.toLowerCase().includes('name')) {
     tradeRoutes.sort((a, b) => a.itemId.localeCompare(b.itemId));
   } else if (sortBy.toLowerCase().includes('update')) {
@@ -613,7 +640,7 @@ window.renderTable = function() {
   tableBody.innerHTML = '';
 
   if (tradeRoutes.length === 0) {
-    tableBody.innerHTML = `<div style="padding: 40px; text-align: center; color: #94a3b8;">No profitable trade routes match your current filters.</div>`;
+    tableBody.innerHTML = `<div style="padding: 40px; text-align: center; color: #f59e0b;">No profitable trade routes match your current filters.</div>`;
     return;
   }
 
@@ -658,7 +685,6 @@ window.renderTable = function() {
   });
 };
 
-// INITIALIZATION
 document.addEventListener('DOMContentLoaded', () => {
   const runBtn = document.getElementById('runBtn');
   if (runBtn) {
