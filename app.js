@@ -294,7 +294,7 @@ const nameMap = {
     "CAPE_SMUGGLER": "Smuggler Cape"
 };
 
-// FORMAT ITEM ID INTO CLEAN READABLE NAME (UPDATED WITH SAFE LOOKUP)
+// FORMAT ITEM ID INTO CLEAN READABLE NAME
 function formatItemName(itemId) {
   if (!itemId) return "";
   const parts = itemId.split("_");
@@ -318,9 +318,10 @@ function getUIFilters() {
   const checkboxes = Array.from(document.querySelectorAll('input[type="checkbox"]:checked'));
 
   let tiers = checkboxes
-    .map(cb => cb.value.toUpperCase())
-    .filter(val => val.startsWith('T') || ['4','5','6','7','8'].includes(val))
+    .map(cb => cb.value.toUpperCase().trim())
+    .filter(val => /^T[4-8]$/.test(val) || ['4','5','6','7','8'].includes(val))
     .map(val => val.startsWith('T') ? val : `T${val}`);
+  
   if (tiers.length === 0) tiers = ["T4", "T5", "T6", "T7", "T8"];
 
   let qualities = checkboxes
@@ -568,6 +569,25 @@ window.renderTable = function() {
     }
   });
 
+  // Group by itemId|quality|toCity, keeping only the single best entry (highest margin, ties broken by absolute profit)
+  const bestRoutesMap = new Map();
+  tradeRoutes.forEach(route => {
+    const groupKey = `${route.itemId}|${route.quality}|${route.toCity}`;
+    if (!bestRoutesMap.has(groupKey)) {
+      bestRoutesMap.set(groupKey, route);
+    } else {
+      const existing = bestRoutesMap.get(groupKey);
+      if (
+        route.profitMargin > existing.profitMargin || 
+        (route.profitMargin === existing.profitMargin && route.profit > existing.profit)
+      ) {
+        bestRoutesMap.set(groupKey, route);
+      }
+    }
+  });
+  tradeRoutes = Array.from(bestRoutesMap.values());
+
+  // Re-sort the unique list of routes
   if (sortBy.toLowerCase().includes('name')) {
     tradeRoutes.sort((a, b) => a.itemId.localeCompare(b.itemId));
   } else if (sortBy.toLowerCase().includes('update')) {
