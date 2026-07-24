@@ -298,7 +298,7 @@ const nameMap = {
 function formatItemName(itemId) {
   if (!itemId) return "";
   const parts = itemId.split("_");
-  const tier = parts[0]; // e.g., "T4"
+  const tier = parts[0];
   const baseKey = parts.slice(1).join("_").trim().toUpperCase();
 
   if (nameMap[baseKey]) {
@@ -415,51 +415,65 @@ function generateItemIds(tiers) {
   return Array.from(new Set(items));
 }
 
-// FETCH API DATA
+// FETCH API DATA (OPTIMIZED WITH LARGER BATCH SIZE AND CONTROLLED CONCURRENCY)
 async function fetchAndMergeData(itemIds, progressCallback) {
   if (itemIds.length === 0) return [];
 
-  const BATCH_SIZE = 6;
+  const BATCH_SIZE = 35; // Increased batch size to reduce total requests
+  const CONCURRENCY_LIMIT = 5; // Limits simultaneous connections to prevent timeouts
   const batches = [];
+  
   for (let i = 0; i < itemIds.length; i += BATCH_SIZE) {
     batches.push(itemIds.slice(i, i + BATCH_SIZE));
   }
 
   let completed = 0;
+  const allResults = [];
+  const queue = [...batches];
 
-  const fetchPromises = batches.map(async (batch) => {
-    const itemString = batch.join(",");
-    const requestUrl = `${AODP_EUROPE_URL}${itemString}.json`;
+  async function worker() {
+    while (queue.length > 0) {
+      const batch = queue.shift();
+      if (!batch) break;
 
-    try {
-      const response = await fetch(requestUrl);
-      if (response.ok) {
-        const data = await response.json();
-        completed++;
-        if (progressCallback) progressCallback(Math.round((completed / batches.length) * 100), completed, batches.length);
-        
-        return data.map(item => ({
-          itemId: item.item_id || item.ItemId,
-          city: item.city || item.City,
-          quality: item.quality || item.Quality || 1,
-          buyPrice: item.sell_price_min ?? item.SellPriceMin ?? 0,
-          sellPrice: item.buy_price_max ?? item.BuyPriceMax ?? 0,
-          updatedAt: Math.max(
-            parseApiDate(item.sell_price_min_date || item.SellPriceMinDate), 
-            parseApiDate(item.buy_price_max_date || item.BuyPriceMaxDate)
-          )
-        }));
+      const itemString = batch.join(",");
+      const requestUrl = `${AODP_EUROPE_URL}${itemString}.json`;
+
+      try {
+        const response = await fetch(requestUrl);
+        if (response.ok) {
+          const data = await response.json();
+          const parsed = data.map(item => ({
+            itemId: item.item_id || item.ItemId,
+            city: item.city || item.City,
+            quality: item.quality || item.Quality || 1,
+            buyPrice: item.sell_price_min ?? item.SellPriceMin ?? 0,
+            sellPrice: item.buy_price_max ?? item.BuyPriceMax ?? 0,
+            updatedAt: Math.max(
+              parseApiDate(item.sell_price_min_date || item.SellPriceMinDate), 
+              parseApiDate(item.buy_price_max_date || item.BuyPriceMaxDate)
+            )
+          }));
+          allResults.push(...parsed);
+        }
+      } catch (err) {
+        console.warn("API batch fetch error:", err);
       }
-    } catch (err) {
-      console.warn("API batch fetch error:", err);
-    }
-    completed++;
-    if (progressCallback) progressCallback(Math.round((completed / batches.length) * 100), completed, batches.length);
-    return [];
-  });
 
-  const resultsArray = await Promise.all(fetchPromises);
-  const allResults = resultsArray.flat();
+      completed++;
+      if (progressCallback) {
+        progressCallback(Math.round((completed / batches.length) * 100), completed, batches.length);
+      }
+    }
+  }
+
+  // Run workers concurrently up to CONCURRENCY_LIMIT
+  const workers = [];
+  for (let i = 0; i < Math.min(CONCURRENCY_LIMIT, batches.length); i++) {
+    workers.push(worker());
+  }
+
+  await Promise.all(workers);
 
   const freshestMap = new Map();
   allResults.forEach(entry => {
@@ -486,7 +500,7 @@ window.calculateAdvisor = async function() {
           Searching Albion Europe Database: <span id="searchPercent">0%</span>
         </div>
         <div style="color: #94a3b8; font-size: 0.9rem;">
-          Batch progress: <span id="searchBatches">0/${Math.ceil(targetItems.length / 6)}</span>
+          Batch progress: <span id="searchBatches">0/${Math.ceil(targetItems.length / 35)}</span>
         </div>
       </div>
     `;
@@ -569,7 +583,7 @@ window.renderTable = function() {
     }
   });
 
-  // Group by itemId|quality|toCity, keeping only the single best entry (highest margin, ties broken by absolute profit)
+  // Group by itemId|quality|toCity, keeping only the single best entry
   const bestRoutesMap = new Map();
   tradeRoutes.forEach(route => {
     const groupKey = `${route.itemId}|${route.quality}|${route.toCity}`;
