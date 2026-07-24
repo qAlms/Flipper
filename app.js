@@ -1,9 +1,9 @@
 window.cachedMarketData = [];
 const AODP_EUROPE_URL = "https://europe.albion-online-data.com/api/v2/stats/prices/";
 
-// --- STABILIZED TUNING CONFIGURATION ---
-const BATCH_SIZE = 35;        // Lighter queries prevent server timeouts
-const CONCURRENCY_LIMIT = 4;  // Prevents choking the server's back-end worker threads
+// --- RATE-LIMIT SAFE TUNING CONFIGURATION ---
+const BATCH_SIZE = 35;        // Balanced query payload
+const CONCURRENCY_LIMIT = 2;  // 2 parallel workers avoids Cloudflare 429 bans
 
 function parseApiDate(dateStr) {
   if (!dateStr || dateStr.startsWith("0001-01-01")) return 0;
@@ -483,14 +483,13 @@ async function fetchAndMergeData(rawItemIds, progressCallback) {
 
       let success = false;
       let attempts = 0;
-      const MAX_ATTEMPTS = 3;
+      const MAX_ATTEMPTS = 5;
 
       while (!success && attempts < MAX_ATTEMPTS) {
         attempts++;
         try {
-          // 8-second request timeout controller
           const controller = new AbortController();
-          const timeoutId = setTimeout(() => controller.abort(), 8000);
+          const timeoutId = setTimeout(() => controller.abort(), 10000);
 
           const response = await fetch(requestUrl, { signal: controller.signal });
           clearTimeout(timeoutId);
@@ -510,16 +509,26 @@ async function fetchAndMergeData(rawItemIds, progressCallback) {
             }));
             allResults.push(...parsed);
             success = true;
+          } else if (response.status === 429) {
+            // Cloudflare rate limit! Exponential Backoff (2s, 4s, 8s, 16s...)
+            const backoffMs = 2000 * Math.pow(2, attempts - 1);
+            console.warn(`[Rate Limited 429] Backing off for ${backoffMs / 1000}s...`);
+            await new Promise(r => setTimeout(r, backoffMs));
+          } else {
+            // Server error / other code
+            await new Promise(r => setTimeout(r, 1000));
           }
         } catch (err) {
           if (attempts < MAX_ATTEMPTS) {
-            // Wait briefly before retrying (400ms delay)
-            await new Promise(r => setTimeout(r, 400 * attempts));
+            await new Promise(r => setTimeout(r, 1000 * attempts));
           } else {
             console.warn(`[DEBUG] Batch failed after ${MAX_ATTEMPTS} retries. Skipping.`);
           }
         }
       }
+
+      // Small pacing pause between requests per worker
+      await new Promise(r => setTimeout(r, 200));
 
       completed++;
       if (progressCallback) {
