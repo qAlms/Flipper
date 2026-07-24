@@ -1,10 +1,9 @@
 window.cachedMarketData = window.cachedMarketData || [];
 const AODP_EUROPE_URL = "https://europe.albion-online-data.com/api/v2/stats/prices/";
 
-// --- RATE-LIMIT SAFE TUNING CONFIGURATION ---
 const BATCH_SIZE = 35;        
 const CONCURRENCY_LIMIT = 2;  
-let isFetchingData = false;   // Lock guard to prevent stacked requests
+let isFetchingData = false;
 
 function parseApiDate(dateStr) {
   if (!dateStr || dateStr.startsWith("0001-01-01")) return 0;
@@ -299,7 +298,6 @@ async function fetchAndMergeData(rawItemIds, progressCallback) {
 window.calculateAdvisor = async function(forceFetch = false) {
   const tableBody = document.getElementById('tableBody');
 
-  // If we already have data and are NOT forcing a refetch, just instantly filter/sort!
   if (window.cachedMarketData && window.cachedMarketData.length > 0 && !forceFetch) {
     window.renderTable();
     return;
@@ -354,7 +352,7 @@ window.renderTable = function() {
 
   const isPremium = document.getElementById('hasPremium')?.value === 'true' || 
                     document.getElementById('hasPremium')?.value?.includes('4%');
-  const sortBy = document.getElementById('sortBy')?.value || 'margin';
+  const sortBy = document.getElementById('sortBy')?.value || 'profit'; 
   const taxRate = isPremium ? 0.04 : 0.08;
   const setupFee = 0.025;
 
@@ -412,24 +410,26 @@ window.renderTable = function() {
       bestRoutesMap.set(groupKey, route);
     } else {
       const existing = bestRoutesMap.get(groupKey);
-      if (
-        route.profitMargin > existing.profitMargin || 
-        (route.profitMargin === existing.profitMargin && route.profit > existing.profit)
-      ) {
+      
+      const isBetter = sortBy.toLowerCase().includes('margin')
+        ? (route.profitMargin > existing.profitMargin || (route.profitMargin === existing.profitMargin && route.profit > existing.profit))
+        : (route.profit > existing.profit || (route.profit === existing.profit && route.profitMargin > existing.profitMargin));
+
+      if (isBetter) {
         bestRoutesMap.set(groupKey, route);
       }
     }
   });
   tradeRoutes = Array.from(bestRoutesMap.values());
 
-  if (sortBy.toLowerCase().includes('profit') && !sortBy.toLowerCase().includes('margin')) {
-    tradeRoutes.sort((a, b) => b.profit - a.profit);
+  if (sortBy.toLowerCase().includes('margin')) {
+    tradeRoutes.sort((a, b) => b.profitMargin - a.profitMargin);
   } else if (sortBy.toLowerCase().includes('name')) {
     tradeRoutes.sort((a, b) => a.itemId.localeCompare(b.itemId));
   } else if (sortBy.toLowerCase().includes('update')) {
     tradeRoutes.sort((a, b) => b.updatedAt - a.updatedAt);
   } else {
-    tradeRoutes.sort((a, b) => b.profitMargin - a.profitMargin);
+    tradeRoutes.sort((a, b) => b.profit - a.profit);
   }
 
   tableBody.innerHTML = '';
@@ -481,7 +481,6 @@ window.renderTable = function() {
 };
 
 function attachUIEventListeners() {
-  // Automatically trigger local re-render whenever any UI inputs change!
   const inputs = document.querySelectorAll('input, select');
   inputs.forEach(input => {
     input.addEventListener('change', () => {
@@ -494,7 +493,6 @@ function attachUIEventListeners() {
   const runBtn = document.getElementById('runBtn');
   if (runBtn) {
     runBtn.onclick = (e) => {
-      // Hold SHIFT while clicking RUN to force a fresh server download
       const forceFetch = e.shiftKey || !window.cachedMarketData || window.cachedMarketData.length === 0;
       window.calculateAdvisor(forceFetch);
     };
