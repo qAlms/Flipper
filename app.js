@@ -239,17 +239,20 @@ async function fetchAndMergeData(rawItemIds, progressCallback) {
 
             if (response.ok) {
               const data = await response.json();
-              const parsed = data.map(item => ({
-                itemId: item.item_id || item.ItemId,
-                city: item.city || item.City,
-                quality: item.quality || item.Quality || 1,
-                buyPrice: item.sell_price_min ?? item.SellPriceMin ?? 0,
-                sellPrice: item.buy_price_max ?? item.BuyPriceMax ?? 0,
-                updatedAt: Math.max(
-                  parseApiDate(item.sell_price_min_date || item.SellPriceMinDate), 
-                  parseApiDate(item.buy_price_max_date || item.BuyPriceMaxDate)
-                )
-              }));
+              const parsed = data.map(item => {
+                const buyUpdatedAt = parseApiDate(item.sell_price_min_date || item.SellPriceMinDate);
+                const sellUpdatedAt = parseApiDate(item.buy_price_max_date || item.BuyPriceMaxDate);
+                return {
+                  itemId: item.item_id || item.ItemId,
+                  city: item.city || item.City,
+                  quality: item.quality || item.Quality || 1,
+                  buyPrice: item.sell_price_min ?? item.SellPriceMin ?? 0,
+                  sellPrice: item.buy_price_max ?? item.BuyPriceMax ?? 0,
+                  buyUpdatedAt: buyUpdatedAt,
+                  sellUpdatedAt: sellUpdatedAt,
+                  updatedAt: Math.max(buyUpdatedAt, sellUpdatedAt)
+                };
+              });
               allResults.push(...parsed);
               success = true;
             } else if (response.status === 429) {
@@ -388,6 +391,18 @@ window.renderTable = function() {
 
         const profitMargin = (profit / totalCost) * 100;
 
+        // Uses the exact timestamps of buy price and sell price
+        const buyPriceTimestamp = buyEntry.buyUpdatedAt || buyEntry.updatedAt || 0;
+        const sellPriceTimestamp = sellEntry.sellUpdatedAt || sellEntry.updatedAt || 0;
+
+        // Calculate worst-case (oldest) date between the two items
+        let routeOldestTimestamp = 0;
+        if (buyPriceTimestamp > 0 && sellPriceTimestamp > 0) {
+          routeOldestTimestamp = Math.min(buyPriceTimestamp, sellPriceTimestamp);
+        } else {
+          routeOldestTimestamp = Math.max(buyPriceTimestamp, sellPriceTimestamp);
+        }
+
         tradeRoutes.push({
           itemId: buyEntry.itemId,
           quality: buyEntry.quality,
@@ -397,7 +412,7 @@ window.renderTable = function() {
           sellPrice: sellEntry.sellPrice,
           profit: profit,
           profitMargin: profitMargin,
-          updatedAt: Math.min(buyEntry.updatedAt, sellEntry.updatedAt)
+          updatedAt: routeOldestTimestamp
         });
       }
     }
@@ -481,7 +496,6 @@ window.renderTable = function() {
 };
 
 function attachUIEventListeners() {
-  // Automatically inject 'Silver Profit' option into the dropdown if it's missing from HTML
   const sortBySelect = document.getElementById('sortBy');
   if (sortBySelect) {
     const hasProfitOption = Array.from(sortBySelect.options).some(opt => opt.value === 'profit');
