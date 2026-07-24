@@ -1,9 +1,9 @@
 window.cachedMarketData = [];
 const AODP_EUROPE_URL = "https://europe.albion-online-data.com/api/v2/stats/prices/";
 
-// --- TUNING CONFIGURATION ---
-const BATCH_SIZE = 50;       // Optimal balance between URL length & server limit
-const CONCURRENCY_LIMIT = 12;  // Parallel network workers
+// --- STABILIZED TUNING CONFIGURATION ---
+const BATCH_SIZE = 35;        // Lighter queries prevent server timeouts
+const CONCURRENCY_LIMIT = 4;  // Prevents choking the server's back-end worker threads
 
 function parseApiDate(dateStr) {
   if (!dateStr || dateStr.startsWith("0001-01-01")) return 0;
@@ -454,7 +454,6 @@ function generateItemIds(tiers, enchantments) {
 async function fetchAndMergeData(rawItemIds, progressCallback) {
   if (!rawItemIds) return [];
 
-  // SANITIZER: Guarantees input is broken down into clean, individual string IDs
   let cleanItemIds = [];
   if (typeof rawItemIds === 'string') {
     cleanItemIds = rawItemIds.split(',').map(s => s.trim()).filter(Boolean);
@@ -469,14 +468,10 @@ async function fetchAndMergeData(rawItemIds, progressCallback) {
   cleanItemIds = Array.from(new Set(cleanItemIds));
   if (cleanItemIds.length === 0) return [];
 
-  // Strictly chunk individual items into groups of max 50
   const batches = chunkArray(cleanItemIds, BATCH_SIZE);
   const allResults = [];
   const queue = [...batches];
   let completed = 0;
-
-  console.log(`[DEBUG] Total unique items to fetch: ${cleanItemIds.length}`);
-  console.log(`[DEBUG] Optimized into ${batches.length} batches of max ${BATCH_SIZE} items with ${CONCURRENCY_LIMIT} parallel workers.`);
 
   async function worker() {
     while (queue.length > 0) {
@@ -486,25 +481,44 @@ async function fetchAndMergeData(rawItemIds, progressCallback) {
       const itemString = batch.join(",");
       const requestUrl = `${AODP_EUROPE_URL}${itemString}.json`;
 
-      try {
-        const response = await fetch(requestUrl);
-        if (response.ok) {
-          const data = await response.json();
-          const parsed = data.map(item => ({
-            itemId: item.item_id || item.ItemId,
-            city: item.city || item.City,
-            quality: item.quality || item.Quality || 1,
-            buyPrice: item.sell_price_min ?? item.SellPriceMin ?? 0,
-            sellPrice: item.buy_price_max ?? item.BuyPriceMax ?? 0,
-            updatedAt: Math.max(
-              parseApiDate(item.sell_price_min_date || item.SellPriceMinDate), 
-              parseApiDate(item.buy_price_max_date || item.BuyPriceMaxDate)
-            )
-          }));
-          allResults.push(...parsed);
+      let success = false;
+      let attempts = 0;
+      const MAX_ATTEMPTS = 3;
+
+      while (!success && attempts < MAX_ATTEMPTS) {
+        attempts++;
+        try {
+          // 8-second request timeout controller
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 8000);
+
+          const response = await fetch(requestUrl, { signal: controller.signal });
+          clearTimeout(timeoutId);
+
+          if (response.ok) {
+            const data = await response.json();
+            const parsed = data.map(item => ({
+              itemId: item.item_id || item.ItemId,
+              city: item.city || item.City,
+              quality: item.quality || item.Quality || 1,
+              buyPrice: item.sell_price_min ?? item.SellPriceMin ?? 0,
+              sellPrice: item.buy_price_max ?? item.BuyPriceMax ?? 0,
+              updatedAt: Math.max(
+                parseApiDate(item.sell_price_min_date || item.SellPriceMinDate), 
+                parseApiDate(item.buy_price_max_date || item.BuyPriceMaxDate)
+              )
+            }));
+            allResults.push(...parsed);
+            success = true;
+          }
+        } catch (err) {
+          if (attempts < MAX_ATTEMPTS) {
+            // Wait briefly before retrying (400ms delay)
+            await new Promise(r => setTimeout(r, 400 * attempts));
+          } else {
+            console.warn(`[DEBUG] Batch failed after ${MAX_ATTEMPTS} retries. Skipping.`);
+          }
         }
-      } catch (err) {
-        console.warn("[DEBUG] API batch fetch network error:", err);
       }
 
       completed++;
