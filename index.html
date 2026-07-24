@@ -146,7 +146,7 @@
       display: inline-block;
       width: 28px;
       height: 16px;
-      pointer-events: none; /* Passes click directly to label/checkbox */
+      pointer-events: none;
     }
 
     .switch input {
@@ -157,7 +157,7 @@
       height: 100%;
       opacity: 0;
       cursor: pointer;
-      pointer-events: auto; /* Checkbox catches click */
+      pointer-events: auto;
       z-index: 2;
     }
 
@@ -167,7 +167,7 @@
       background-color: #334155;
       transition: .2s;
       border-radius: 20px;
-      pointer-events: none; /* Prevents visual slider from stealing click */
+      pointer-events: none;
     }
 
     .slider:before {
@@ -339,6 +339,11 @@
         <div class="input-group">
           <label for="budget">Budget (Silver):</label>
           <input type="number" id="budget" value="5000000" style="width: 150px;">
+        </div>
+
+        <div class="input-group">
+          <label for="minProfit">Min Profit:</label>
+          <input type="number" id="minProfit" value="0" style="width: 130px;">
         </div>
 
         <div class="input-group">
