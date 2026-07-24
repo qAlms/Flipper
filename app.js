@@ -134,7 +134,18 @@ function getUIFilters() {
   const budgetInput = document.getElementById('budget') || document.querySelector('input[type="number"]');
   const maxBudget = budgetInput ? Number(budgetInput.value) || Infinity : Infinity;
 
-  return { tiers, qualities, enchantments, locations, maxBudget };
+  const maxAgeEl = document.getElementById('maxAge');
+  let maxAgeMinutes = 120; // Default: 2 Hours cutoff
+  if (maxAgeEl) {
+    const val = maxAgeEl.value;
+    if (val === 'all' || val === '0') {
+      maxAgeMinutes = Infinity;
+    } else {
+      maxAgeMinutes = Number(val) || 120;
+    }
+  }
+
+  return { tiers, qualities, enchantments, locations, maxBudget, maxAgeMinutes };
 }
 
 function generateItemIds(tiers, enchantments) {
@@ -196,7 +207,7 @@ function generateItemIds(tiers, enchantments) {
   return Array.from(new Set(items));
 }
 
-async function fetchAndMergeData(rawItemIds, progressCallback) {
+async function fetchAndMergeData(rawItemIds, filters, progressCallback) {
   if (isFetchingData) {
     console.warn("Fetch already in progress. Skipping redundant network call.");
     return window.cachedMarketData;
@@ -218,12 +229,21 @@ async function fetchAndMergeData(rawItemIds, progressCallback) {
     const queue = [...batches];
     let completed = 0;
 
+    const queryParams = new URLSearchParams();
+    if (filters && filters.locations && filters.locations.length > 0) {
+      queryParams.set('locations', filters.locations.join(','));
+    }
+    if (filters && filters.qualities && filters.qualities.length > 0) {
+      queryParams.set('qualities', filters.qualities.join(','));
+    }
+    const queryString = queryParams.toString() ? `?${queryParams.toString()}` : '';
+
     async function worker() {
       while (queue.length > 0) {
         const batch = queue.shift();
         if (!batch || batch.length === 0) break;
 
-        const requestUrl = `${AODP_EUROPE_URL}${batch.join(",")}.json`;
+        const requestUrl = `${AODP_EUROPE_URL}${batch.join(",")}.json${queryString}`;
         let success = false;
         let attempts = 0;
         const MAX_ATTEMPTS = 5;
@@ -234,7 +254,12 @@ async function fetchAndMergeData(rawItemIds, progressCallback) {
             const controller = new AbortController();
             const timeoutId = setTimeout(() => controller.abort(), 10000);
 
-            const response = await fetch(requestUrl, { signal: controller.signal });
+            // Append unique timestamp to bypass any HTTP/Browser caching
+            const fetchUrl = queryString 
+              ? `${requestUrl}&_t=${Date.now()}` 
+              : `${requestUrl}?_t=${Date.now()}`;
+
+            const response = await fetch(fetchUrl, { signal: controller.signal, cache: 'no-cache' });
             clearTimeout(timeoutId);
 
             if (response.ok) {
@@ -313,15 +338,15 @@ window.calculateAdvisor = async function(forceFetch = false) {
     return;
   }
 
-  const { tiers, enchantments } = getUIFilters();
-  const targetItems = generateItemIds(tiers, enchantments);
+  const filters = getUIFilters();
+  const targetItems = generateItemIds(filters.tiers, filters.enchantments);
   const totalBatches = Math.ceil(targetItems.length / BATCH_SIZE);
 
   if (tableBody) {
     tableBody.innerHTML = `
       <div style="padding: 40px; text-align: center; color: #f59e0b;">
         <div style="font-size: 1.2rem; font-weight: bold; margin-bottom: 8px;">
-          Fetching Albion Market Data: <span id="searchPercent">0%</span>
+          Fetching Fresh Albion Market Data: <span id="searchPercent">0%</span>
         </div>
         <div style="color: #94a3b8; font-size: 0.9rem;">
           Batch progress: <span id="searchBatches">0/${totalBatches}</span>
@@ -331,7 +356,7 @@ window.calculateAdvisor = async function(forceFetch = false) {
   }
 
   try {
-    window.cachedMarketData = await fetchAndMergeData(targetItems, (percent, done, total) => {
+    window.cachedMarketData = await fetchAndMergeData(targetItems, filters, (percent, done, total) => {
       const percentEl = document.getElementById('searchPercent');
       const batchesEl = document.getElementById('searchBatches');
       if (percentEl) percentEl.textContent = `${percent}%`;
@@ -359,7 +384,8 @@ window.renderTable = function() {
   const taxRate = isPremium ? 0.04 : 0.08;
   const setupFee = 0.025;
 
-  const { qualities, locations, maxBudget } = getUIFilters();
+  const { qualities, locations, maxBudget, maxAgeMinutes } = getUIFilters();
+  const now = Date.now();
 
   let tradeRoutes = [];
   const itemsGrouped = {};
@@ -381,6 +407,20 @@ window.renderTable = function() {
         const sellCityMatch = locations.some(l => l.toLowerCase() === sellEntry.city.toLowerCase());
         if (!buyCityMatch || !sellCityMatch) continue;
 
+        const buyPriceTimestamp = buyEntry.buyUpdatedAt || buyEntry.updatedAt || 0;
+        const sellPriceTimestamp = sellEntry.sellUpdatedAt || sellEntry.updatedAt || 0;
+
+        if (buyPriceTimestamp <= 0 || sellPriceTimestamp <= 0) continue;
+
+        // Oldest price date between the buying & selling cities
+        let routeOldestTimestamp = Math.min(buyPriceTimestamp, sellPriceTimestamp);
+        const ageInMinutes = (now - routeOldestTimestamp) / 60000;
+
+        // Filter out stale market prices exceeding Max Age selection
+        if (maxAgeMinutes !== Infinity && ageInMinutes > maxAgeMinutes) {
+          continue;
+        }
+
         const totalCost = buyEntry.buyPrice * (1 + setupFee);
         if (totalCost > maxBudget) continue;
 
@@ -390,18 +430,6 @@ window.renderTable = function() {
         if (profit <= 0) continue;
 
         const profitMargin = (profit / totalCost) * 100;
-
-        // Uses the exact timestamps of buy price and sell price
-        const buyPriceTimestamp = buyEntry.buyUpdatedAt || buyEntry.updatedAt || 0;
-        const sellPriceTimestamp = sellEntry.sellUpdatedAt || sellEntry.updatedAt || 0;
-
-        // Calculate worst-case (oldest) date between the two items
-        let routeOldestTimestamp = 0;
-        if (buyPriceTimestamp > 0 && sellPriceTimestamp > 0) {
-          routeOldestTimestamp = Math.min(buyPriceTimestamp, sellPriceTimestamp);
-        } else {
-          routeOldestTimestamp = Math.max(buyPriceTimestamp, sellPriceTimestamp);
-        }
 
         tradeRoutes.push({
           itemId: buyEntry.itemId,
@@ -450,14 +478,14 @@ window.renderTable = function() {
   tableBody.innerHTML = '';
 
   if (tradeRoutes.length === 0) {
-    tableBody.innerHTML = `<div style="padding: 40px; text-align: center; color: #f59e0b;">No profitable trade routes match your current filters.</div>`;
+    tableBody.innerHTML = `<div style="padding: 40px; text-align: center; color: #f59e0b;">No profitable trade routes found matching your filters (or all available prices were older than your <strong>Max Data Age</strong> filter).</div>`;
     return;
   }
 
   tradeRoutes.forEach((route) => {
     let ageDisplay = "Age: Unknown";
     if (route.updatedAt > 0) {
-      const minsAgo = Math.floor((Date.now() - route.updatedAt) / 60000);
+      const minsAgo = Math.floor((now - route.updatedAt) / 60000);
       if (minsAgo <= 0) {
         ageDisplay = "Age: Just now";
       } else if (minsAgo < 60) {
@@ -496,6 +524,33 @@ window.renderTable = function() {
 };
 
 function attachUIEventListeners() {
+  // Auto-inject 'Max Data Age' Selector into UI Controls if missing
+  let maxAgeSelect = document.getElementById('maxAge');
+  if (!maxAgeSelect) {
+    const container = document.querySelector('.controls') || document.querySelector('.filters') || document.body;
+    const wrapper = document.createElement('div');
+    wrapper.style.margin = '8px 12px 8px 0';
+    wrapper.style.display = 'inline-block';
+    wrapper.innerHTML = `
+      <label for="maxAge" style="font-weight: bold; margin-right: 6px;">Max Data Age:</label>
+      <select id="maxAge" style="padding: 4px 8px; border-radius: 4px; background: #1e293b; color: #fff; border: 1px solid #475569;">
+        <option value="30">30 Minutes</option>
+        <option value="60">1 Hour</option>
+        <option value="120" selected>2 Hours</option>
+        <option value="240">4 Hours</option>
+        <option value="720">12 Hours</option>
+        <option value="1440">24 Hours</option>
+        <option value="all">Any Age</option>
+      </select>
+    `;
+    const sortBySelect = document.getElementById('sortBy');
+    if (sortBySelect && sortBySelect.parentNode) {
+      sortBySelect.parentNode.insertBefore(wrapper, sortBySelect);
+    } else {
+      container.appendChild(wrapper);
+    }
+  }
+
   const sortBySelect = document.getElementById('sortBy');
   if (sortBySelect) {
     const hasProfitOption = Array.from(sortBySelect.options).some(opt => opt.value === 'profit');
