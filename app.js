@@ -358,35 +358,39 @@ window.calculateAdvisor = async function(forceFetch = false) {
     return;
   }
 
-  const filters = getUIFilters();
-  const targetItems = generateItemIds(filters.tiers, filters.enchantments, filters.categories);
-  const totalBatches = Math.ceil(targetItems.length / BATCH_SIZE);
-
-  if (tableBody) {
-    tableBody.innerHTML = `
-      <div style="padding: 40px; text-align: center; color: #f59e0b;">
-        <div style="font-size: 1.2rem; font-weight: bold; margin-bottom: 8px;">
-          Fetching Fresh Albion Market Data: <span id="searchPercent">0%</span>
-        </div>
-        <div style="color: #94a3b8; font-size: 0.9rem;">
-          Batch progress: <span id="searchBatches">0/${totalBatches}</span>
-        </div>
-      </div>
-    `;
-  }
-
   try {
+    const filters = getUIFilters();
+    const targetItems = generateItemIds(filters.tiers, filters.enchantments, filters.categories);
+    const totalBatches = Math.ceil(targetItems.length / BATCH_SIZE);
+
+    if (tableBody) {
+      tableBody.innerHTML = `
+        <div style="padding: 40px; text-align: center; color: #f59e0b;">
+          <div style="font-size: 1.2rem; font-weight: bold; margin-bottom: 8px;">
+            Fetching Fresh Albion Market Data: <span id="searchPercent">0%</span>
+          </div>
+          <div style="color: #94a3b8; font-size: 0.9rem;">
+            Batch progress: <span id="searchBatches">0/${totalBatches}</span>
+          </div>
+        </div>
+      `;
+    }
+
     window.cachedMarketData = await fetchAndMergeData(targetItems, filters, (percent, done, total) => {
       const percentEl = document.getElementById('searchPercent');
       const batchesEl = document.getElementById('searchBatches');
       if (percentEl) percentEl.textContent = `${percent}%`;
       if (batchesEl) batchesEl.textContent = `${done}/${total}`;
     });
+
+    window.renderTable();
   } catch (e) {
     console.error("Failed to fetch data inside calculateAdvisor:", e);
+    isFetchingData = false;
+    if (tableBody) {
+      tableBody.innerHTML = `<div style="padding: 40px; text-align: center; color: #ef4444;">Error occurred while fetching data: ${e.message}</div>`;
+    }
   }
-
-  renderTable();
 };
 
 window.renderTable = function() {
@@ -445,8 +449,8 @@ window.renderTable = function() {
         const netRevenue = sellEntry.sellPrice * (1 - setupFee - taxRate);
         const profit = netRevenue - totalCost;
         
-        // Filter out profits lower than the number input value (and always exclude zero/negative)
-        if (profit < Math.max(1, minProfit)) continue;
+        // Filter out profits lower than the minimum profit value entered in the box
+        if (profit < minProfit) continue;
 
         const profitMargin = (profit / totalCost) * 100;
 
@@ -585,10 +589,12 @@ function attachUIEventListeners() {
 
   const runBtn = document.getElementById('runBtn');
   if (runBtn) {
-    runBtn.onclick = (e) => {
+    runBtn.replaceWith(runBtn.cloneNode(true)); // remove old listeners
+    const freshRunBtn = document.getElementById('runBtn');
+    freshRunBtn.addEventListener('click', (e) => {
       const forceFetch = e.shiftKey || !window.cachedMarketData || window.cachedMarketData.length === 0;
       window.calculateAdvisor(forceFetch);
-    };
+    });
   }
 }
 
