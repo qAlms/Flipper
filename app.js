@@ -294,12 +294,12 @@ const nameMap = {
     "CAPE_SMUGGLER": "Smuggler Cape"
 };
 
-// FORMAT ITEM ID INTO CLEAN READABLE NAME
+// FORMAT ITEM ID INTO CLEAN READABLE NAME (UPDATED WITH SAFE LOOKUP)
 function formatItemName(itemId) {
   if (!itemId) return "";
   const parts = itemId.split("_");
-  const tier = parts[0]; // e.g., "T6"
-  const baseKey = parts.slice(1).join("_");
+  const tier = parts[0]; // e.g., "T4"
+  const baseKey = parts.slice(1).join("_").trim().toUpperCase();
 
   if (nameMap[baseKey]) {
     return `${tier} ${nameMap[baseKey]}`;
