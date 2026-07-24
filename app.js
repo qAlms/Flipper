@@ -30,6 +30,12 @@ function chunkArray(array, chunkSize) {
   return chunks;
 }
 
+function getCityColorVar(city) {
+  if (!city) return 'var(--text-muted)';
+  const slug = city.toLowerCase().replace(/\s+/g, '-');
+  return `var(--color-${slug})`;
+}
+
 const nameMap = {
     "ARMOR_CLOTH_SET1": "Scholar Robe", "HEAD_CLOTH_SET1": "Scholar Cowl", "SHOES_CLOTH_SET1": "Scholar Sandals",
     "ARMOR_CLOTH_SET2": "Cleric Robe", "HEAD_CLOTH_SET2": "Cleric Cowl", "SHOES_CLOTH_SET2": "Cleric Sandals",
@@ -103,39 +109,44 @@ function formatItemName(itemId) {
 function getUIFilters() {
   const checkboxes = Array.from(document.querySelectorAll('input[type="checkbox"]:checked'));
 
+  let categories = checkboxes
+    .filter(cb => cb.dataset.type === 'category')
+    .map(cb => cb.value.toLowerCase());
+  if (categories.length === 0) categories = ['weapons', 'armor', 'accessories'];
+
   let tiers = checkboxes
+    .filter(cb => cb.dataset.type === 'tier' || /^T[4-8]$/i.test(cb.value))
     .map(cb => cb.value.toUpperCase().trim())
-    .filter(val => /^T[4-8]$/.test(val) || ['4','5','6','7','8'].includes(val))
     .map(val => val.startsWith('T') ? val : `T${val}`);
+  tiers = Array.from(new Set(tiers));
   if (tiers.length === 0) tiers = ["T4", "T5", "T6", "T7", "T8"];
 
   let qualities = checkboxes
+    .filter(cb => cb.dataset.type === 'quality' || cb.value.match(/normal|good|outstanding|excellent|masterpiece/i))
     .map(cb => getQualityNumber(cb.value))
     .filter(val => val >= 1 && val <= 5);
+  qualities = Array.from(new Set(qualities));
   if (qualities.length === 0) qualities = [1, 2, 3, 4, 5];
 
   let enchantments = checkboxes
-    .map(cb => {
-      const val = cb.value.trim();
-      if (/^[0-4]$/.test(val)) return Number(val);
-      if (/^\.[0-4]$/.test(val)) return Number(val.substring(1));
-      if (/^@?[0-4]$/.test(val)) return Number(val.replace('@', ''));
-      return null;
-    })
-    .filter(val => val !== null && val >= 0 && val <= 4);
+    .filter(cb => cb.dataset.type === 'enchantment')
+    .map(cb => Number(cb.value))
+    .filter(val => !isNaN(val) && val >= 0 && val <= 4);
+  enchantments = Array.from(new Set(enchantments));
   if (enchantments.length === 0) enchantments = [0, 1, 2, 3];
 
   const knownCities = ["Fort Sterling", "Lymhurst", "Bridgewatch", "Martlock", "Thetford", "Caerleon", "Brecilien", "Black Market"];
   let locations = checkboxes
-    .map(cb => cb.value)
-    .filter(val => knownCities.some(city => city.toLowerCase() === val.toLowerCase()));
+    .filter(cb => cb.dataset.city || knownCities.some(city => city.toLowerCase() === cb.value.toLowerCase()))
+    .map(cb => cb.dataset.city || cb.value);
+  locations = Array.from(new Set(locations));
   if (locations.length === 0) locations = knownCities;
 
   const budgetInput = document.getElementById('budget') || document.querySelector('input[type="number"]');
   const maxBudget = budgetInput ? Number(budgetInput.value) || Infinity : Infinity;
 
   const maxAgeEl = document.getElementById('maxAge');
-  let maxAgeMinutes = 120; // Default: 2 Hours cutoff
+  let maxAgeMinutes = 120;
   if (maxAgeEl) {
     const val = maxAgeEl.value;
     if (val === 'all' || val === '0') {
@@ -145,10 +156,10 @@ function getUIFilters() {
     }
   }
 
-  return { tiers, qualities, enchantments, locations, maxBudget, maxAgeMinutes };
+  return { tiers, qualities, enchantments, locations, maxBudget, maxAgeMinutes, categories };
 }
 
-function generateItemIds(tiers, enchantments) {
+function generateItemIds(tiers, enchantments, categories = ['weapons', 'armor', 'accessories']) {
   const weaponCategories = [
     "MAIN_SWORD", "2H_SWORD", "MAIN_SCIMITAR_MORGANA", "2H_SCIMITAR_MORGANA", "MAIN_NINJASWORD", "2H_CLEAVER_HELL", "2H_DUALSCIMITAR_AVALON", "2H_SWORD_FEY",
     "MAIN_AXE", "2H_AXE", "2H_HALBERD", "2H_HALBERD_MORGANA", "2H_COMPOSITEAXE_KEEPER", "2H_SCYTHE_HELL", "2H_AXE_AVALON", "2H_AXE_FEY",
@@ -193,11 +204,18 @@ function generateItemIds(tiers, enchantments) {
     "CAPE_MORGANA", "CAPE_KEEPER", "CAPE_BRECILIEN", "CAPE_HERETIC", "CAPE_UNDEAD", "CAPE_DEMON", "CAPE_AVALON", "CAPE_SMUGGLER"
   ];
 
-  const allBaseTypes = [...weaponCategories, ...armorCategories, ...accessories];
-  const items = [];
+  let selectedBaseTypes = [];
+  if (categories.includes('weapons')) selectedBaseTypes.push(...weaponCategories);
+  if (categories.includes('armor')) selectedBaseTypes.push(...armorCategories);
+  if (categories.includes('accessories')) selectedBaseTypes.push(...accessories);
 
+  if (selectedBaseTypes.length === 0) {
+    selectedBaseTypes = [...weaponCategories, ...armorCategories, ...accessories];
+  }
+
+  const items = [];
   tiers.forEach(tier => {
-    allBaseTypes.forEach(base => {
+    selectedBaseTypes.forEach(base => {
       enchantments.forEach(enc => {
         items.push(enc === 0 ? `${tier}_${base}` : `${tier}_${base}@${enc}`);
       });
@@ -254,7 +272,6 @@ async function fetchAndMergeData(rawItemIds, filters, progressCallback) {
             const controller = new AbortController();
             const timeoutId = setTimeout(() => controller.abort(), 10000);
 
-            // Append unique timestamp to bypass any HTTP/Browser caching
             const fetchUrl = queryString 
               ? `${requestUrl}&_t=${Date.now()}` 
               : `${requestUrl}?_t=${Date.now()}`;
@@ -339,7 +356,7 @@ window.calculateAdvisor = async function(forceFetch = false) {
   }
 
   const filters = getUIFilters();
-  const targetItems = generateItemIds(filters.tiers, filters.enchantments);
+  const targetItems = generateItemIds(filters.tiers, filters.enchantments, filters.categories);
   const totalBatches = Math.ceil(targetItems.length / BATCH_SIZE);
 
   if (tableBody) {
@@ -412,11 +429,9 @@ window.renderTable = function() {
 
         if (buyPriceTimestamp <= 0 || sellPriceTimestamp <= 0) continue;
 
-        // Oldest price date between the buying & selling cities
         let routeOldestTimestamp = Math.min(buyPriceTimestamp, sellPriceTimestamp);
         const ageInMinutes = (now - routeOldestTimestamp) / 60000;
 
-        // Filter out stale market prices exceeding Max Age selection
         if (maxAgeMinutes !== Infinity && ageInMinutes > maxAgeMinutes) {
           continue;
         }
@@ -508,11 +523,17 @@ window.renderTable = function() {
         </div>
         <div><span class="badge-update">${ageDisplay}</span></div>
         <div class="price-cell">
-          <div class="city-info">${route.fromCity}</div>
+          <div class="city-info">
+            <span class="city-dot" style="background-color: ${getCityColorVar(route.fromCity)};"></span>
+            ${route.fromCity}
+          </div>
           <div class="price-val">${Math.round(route.buyPrice).toLocaleString()} silver</div>
         </div>
         <div class="price-cell">
-          <div class="city-info">${route.toCity}</div>
+          <div class="city-info">
+            <span class="city-dot" style="background-color: ${getCityColorVar(route.toCity)};"></span>
+            ${route.toCity}
+          </div>
           <div class="price-val">${Math.round(route.sellPrice).toLocaleString()} silver</div>
         </div>
         <div class="${profitClass}">${Math.round(route.profit).toLocaleString()} silver</div>
@@ -524,16 +545,14 @@ window.renderTable = function() {
 };
 
 function attachUIEventListeners() {
-  // Auto-inject 'Max Data Age' Selector into UI Controls if missing
   let maxAgeSelect = document.getElementById('maxAge');
   if (!maxAgeSelect) {
-    const container = document.querySelector('.controls') || document.querySelector('.filters') || document.body;
+    const container = document.querySelector('.top-row-inputs') || document.body;
     const wrapper = document.createElement('div');
-    wrapper.style.margin = '8px 12px 8px 0';
-    wrapper.style.display = 'inline-block';
+    wrapper.className = 'input-group';
     wrapper.innerHTML = `
-      <label for="maxAge" style="font-weight: bold; margin-right: 6px;">Max Data Age:</label>
-      <select id="maxAge" style="padding: 4px 8px; border-radius: 4px; background: #1e293b; color: #fff; border: 1px solid #475569;">
+      <label for="maxAge">Max Data Age:</label>
+      <select id="maxAge">
         <option value="30">30 Minutes</option>
         <option value="60">1 Hour</option>
         <option value="120" selected>2 Hours</option>
@@ -545,21 +564,9 @@ function attachUIEventListeners() {
     `;
     const sortBySelect = document.getElementById('sortBy');
     if (sortBySelect && sortBySelect.parentNode) {
-      sortBySelect.parentNode.insertBefore(wrapper, sortBySelect);
+      sortBySelect.parentNode.insertBefore(wrapper, sortBySelect.nextSibling);
     } else {
       container.appendChild(wrapper);
-    }
-  }
-
-  const sortBySelect = document.getElementById('sortBy');
-  if (sortBySelect) {
-    const hasProfitOption = Array.from(sortBySelect.options).some(opt => opt.value === 'profit');
-    if (!hasProfitOption) {
-      const profitOption = document.createElement('option');
-      profitOption.value = 'profit';
-      profitOption.textContent = 'Highest Silver Profit';
-      sortBySelect.insertBefore(profitOption, sortBySelect.firstChild);
-      sortBySelect.value = 'profit';
     }
   }
 
