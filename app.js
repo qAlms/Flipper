@@ -18,6 +18,15 @@ function getQualityNumber(val) {
   return Number(val) || 1;
 }
 
+// Helper function to strictly chunk arrays into groups of max size
+function chunkArray(array, chunkSize) {
+  const chunks = [];
+  for (let i = 0; i < array.length; i += chunkSize) {
+    chunks.push(array.slice(i, i + chunkSize));
+  }
+  return chunks;
+}
+
 // COMPREHENSIVE CORRECTED ALBION ITEM NAME MAPPING
 const nameMap = {
     // --- CLOTH ARMOR SETS ---
@@ -438,30 +447,30 @@ function generateItemIds(tiers, enchantments) {
   });
 
   const uniqueItems = Array.from(new Set(items));
-  console.log(`[DEBUG] Generated ${uniqueItems.length} item queries (including enchantments: ${enchantments.join(', ')})`);
+  console.log(`[DEBUG] Generated ${uniqueItems.length} total item IDs to query.`);
   return uniqueItems;
 }
 
 async function fetchAndMergeData(itemIds, progressCallback) {
-  if (itemIds.length === 0) return [];
+  if (!itemIds || itemIds.length === 0) return [];
 
-  const BATCH_SIZE = 20; // Reduced batch size to 20
+  const BATCH_SIZE = 20; // Hard cutoff of 20 items per HTTP request
   const CONCURRENCY_LIMIT = 5;
-  const batches = [];
   
-  for (let i = 0; i < itemIds.length; i += BATCH_SIZE) {
-    batches.push(itemIds.slice(i, i + BATCH_SIZE));
-  }
-
-  let completed = 0;
+  // Strictly chunk master item list into small batches of 20
+  const batches = chunkArray(itemIds, BATCH_SIZE);
   const allResults = [];
   const queue = [...batches];
+  let completed = 0;
+
+  console.log(`[DEBUG] Executing ${batches.length} strict batches of max 20 items each.`);
 
   async function worker() {
     while (queue.length > 0) {
       const batch = queue.shift();
       if (!batch) break;
 
+      // Join ONLY the 20 items in this chunk
       const itemString = batch.join(",");
       const requestUrl = `${AODP_EUROPE_URL}${itemString}.json`;
 
@@ -521,7 +530,7 @@ window.calculateAdvisor = async function() {
     tableBody.innerHTML = `
       <div style="padding: 40px; text-align: center; color: #f59e0b;">
         <div style="font-size: 1.2rem; font-weight: bold; margin-bottom: 8px;">
-          Searching Albion Europe Database (Incl. Enchantments): <span id="searchPercent">0%</span>
+          Searching Albion Europe Database: <span id="searchPercent">0%</span>
         </div>
         <div style="color: #94a3b8; font-size: 0.9rem;">
           Batch progress: <span id="searchBatches">0/${Math.ceil(targetItems.length / 20)}</span>
@@ -689,4 +698,3 @@ document.addEventListener('DOMContentLoaded', () => {
   
   window.renderTable();
 });
-      
