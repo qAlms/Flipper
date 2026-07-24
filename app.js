@@ -337,7 +337,6 @@ function getUIFilters() {
     .filter(val => val >= 1 && val <= 5);
   if (qualities.length === 0) qualities = [1, 2, 3, 4, 5];
 
-  // Detect requested enchantments (0 = flat, 1-4 = enchanted)
   let enchantments = checkboxes
     .map(cb => {
       const val = cb.value.trim();
@@ -348,7 +347,6 @@ function getUIFilters() {
     })
     .filter(val => val !== null && val >= 0 && val <= 4);
 
-  // Default to normal (0) and enchantments (.1, .2, .3) if none specified
   if (enchantments.length === 0) enchantments = [0, 1, 2, 3];
 
   const knownCities = ["Fort Sterling", "Lymhurst", "Bridgewatch", "Martlock", "Thetford", "Caerleon", "Brecilien", "Black Market"];
@@ -439,7 +437,10 @@ function generateItemIds(tiers, enchantments) {
     });
   });
 
-  return Array.from(new Set(items));
+  const uniqueItems = Array.from(new Set(items));
+  console.log(`[DEBUG] Generated ${uniqueItems.length} item queries (including enchantments: ${enchantments.join(', ')})`);
+  console.log(`[DEBUG] Sample items being requested:`, uniqueItems.slice(0, 5));
+  return uniqueItems;
 }
 
 async function fetchAndMergeData(itemIds, progressCallback) {
@@ -453,7 +454,7 @@ async function fetchAndMergeData(itemIds, progressCallback) {
     batches.push(itemIds.slice(i, i + BATCH_SIZE));
   }
 
-  console.log(`Starting fetch: ${itemIds.length} items broken into ${batches.length} batches.`);
+  console.log(`[DEBUG] Starting fetch: broken into ${batches.length} batches.`);
 
   let completed = 0;
   const allResults = [];
@@ -471,6 +472,7 @@ async function fetchAndMergeData(itemIds, progressCallback) {
         const response = await fetch(requestUrl);
         if (response.ok) {
           const data = await response.json();
+          console.log(`[DEBUG] Batch fetched successfully. URL had ${batch.length} items, API returned ${data.length} pricing entries.`);
           const parsed = data.map(item => ({
             itemId: item.item_id || item.ItemId,
             city: item.city || item.City,
@@ -484,10 +486,10 @@ async function fetchAndMergeData(itemIds, progressCallback) {
           }));
           allResults.push(...parsed);
         } else {
-          console.warn(`API returned status ${response.status} for batch URL:`, requestUrl);
+          console.warn(`[DEBUG] API returned status ${response.status} for batch URL:`, requestUrl);
         }
       } catch (err) {
-        console.warn("API batch fetch network error:", err);
+        console.warn("[DEBUG] API batch fetch network error:", err);
       }
 
       completed++;
@@ -503,7 +505,7 @@ async function fetchAndMergeData(itemIds, progressCallback) {
   }
 
   await Promise.all(workers);
-  console.log(`Fetch complete. Total raw entries collected: ${allResults.length}`);
+  console.log(`[DEBUG] Fetch complete. Total raw entries collected: ${allResults.length}`);
 
   const freshestMap = new Map();
   allResults.forEach(entry => {
@@ -514,7 +516,7 @@ async function fetchAndMergeData(itemIds, progressCallback) {
     }
   });
 
-  console.log(`Unique filtered entries after deduping: ${freshestMap.size}`);
+  console.log(`[DEBUG] Unique filtered entries after deduping: ${freshestMap.size}`);
   return Array.from(freshestMap.values());
 }
 
