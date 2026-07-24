@@ -439,22 +439,19 @@ function generateItemIds(tiers, enchantments) {
 
   const uniqueItems = Array.from(new Set(items));
   console.log(`[DEBUG] Generated ${uniqueItems.length} item queries (including enchantments: ${enchantments.join(', ')})`);
-  console.log(`[DEBUG] Sample items being requested:`, uniqueItems.slice(0, 5));
   return uniqueItems;
 }
 
 async function fetchAndMergeData(itemIds, progressCallback) {
   if (itemIds.length === 0) return [];
 
-  const BATCH_SIZE = 35;
+  const BATCH_SIZE = 20; // Reduced batch size to 20
   const CONCURRENCY_LIMIT = 5;
   const batches = [];
   
   for (let i = 0; i < itemIds.length; i += BATCH_SIZE) {
     batches.push(itemIds.slice(i, i + BATCH_SIZE));
   }
-
-  console.log(`[DEBUG] Starting fetch: broken into ${batches.length} batches.`);
 
   let completed = 0;
   const allResults = [];
@@ -472,7 +469,6 @@ async function fetchAndMergeData(itemIds, progressCallback) {
         const response = await fetch(requestUrl);
         if (response.ok) {
           const data = await response.json();
-          console.log(`[DEBUG] Batch fetched successfully. URL had ${batch.length} items, API returned ${data.length} pricing entries.`);
           const parsed = data.map(item => ({
             itemId: item.item_id || item.ItemId,
             city: item.city || item.City,
@@ -485,8 +481,6 @@ async function fetchAndMergeData(itemIds, progressCallback) {
             )
           }));
           allResults.push(...parsed);
-        } else {
-          console.warn(`[DEBUG] API returned status ${response.status} for batch URL:`, requestUrl);
         }
       } catch (err) {
         console.warn("[DEBUG] API batch fetch network error:", err);
@@ -505,7 +499,6 @@ async function fetchAndMergeData(itemIds, progressCallback) {
   }
 
   await Promise.all(workers);
-  console.log(`[DEBUG] Fetch complete. Total raw entries collected: ${allResults.length}`);
 
   const freshestMap = new Map();
   allResults.forEach(entry => {
@@ -516,7 +509,6 @@ async function fetchAndMergeData(itemIds, progressCallback) {
     }
   });
 
-  console.log(`[DEBUG] Unique filtered entries after deduping: ${freshestMap.size}`);
   return Array.from(freshestMap.values());
 }
 
@@ -532,7 +524,7 @@ window.calculateAdvisor = async function() {
           Searching Albion Europe Database (Incl. Enchantments): <span id="searchPercent">0%</span>
         </div>
         <div style="color: #94a3b8; font-size: 0.9rem;">
-          Batch progress: <span id="searchBatches">0/${Math.ceil(targetItems.length / 35)}</span>
+          Batch progress: <span id="searchBatches">0/${Math.ceil(targetItems.length / 20)}</span>
         </div>
       </div>
     `;
@@ -647,17 +639,17 @@ window.renderTable = function() {
   }
 
   tradeRoutes.forEach((route) => {
-    let timeDisplay = "No Recent Data";
+    let ageDisplay = "Age: Unknown";
     if (route.updatedAt > 0) {
       const minsAgo = Math.floor((Date.now() - route.updatedAt) / 60000);
       if (minsAgo <= 0) {
-        timeDisplay = "Just now";
+        ageDisplay = "Age: Just now";
       } else if (minsAgo < 60) {
-        timeDisplay = `${minsAgo}m ago`;
+        ageDisplay = `Age: ${minsAgo}m`;
       } else {
         const hours = Math.floor(minsAgo / 60);
         const mins = minsAgo % 60;
-        timeDisplay = `${hours}h ${mins}m ago`;
+        ageDisplay = `Age: ${hours}h ${mins}m`;
       }
     }
 
@@ -670,7 +662,7 @@ window.renderTable = function() {
           <div class="item-title">${readableName}</div>
           <div class="item-subtext" style="font-size: 0.75rem; color: #64748b;">ID: ${route.itemId} | Quality: ${route.quality}</div>
         </div>
-        <div><span class="badge-update">${timeDisplay}</span></div>
+        <div><span class="badge-update">${ageDisplay}</span></div>
         <div class="price-cell">
           <div class="city-info">${route.fromCity}</div>
           <div class="price-val">${Math.round(route.buyPrice).toLocaleString()} silver</div>
@@ -697,3 +689,4 @@ document.addEventListener('DOMContentLoaded', () => {
   
   window.renderTable();
 });
+      
