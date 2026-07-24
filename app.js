@@ -142,7 +142,7 @@ function getUIFilters() {
   locations = Array.from(new Set(locations));
   if (locations.length === 0) locations = knownCities;
 
-  const budgetInput = document.getElementById('budget');
+  const budgetInput = document.getElementById('budget') || document.querySelector('input[type="number"]');
   const maxBudget = budgetInput ? Number(budgetInput.value) || Infinity : Infinity;
 
   const maxAgeEl = document.getElementById('maxAge');
@@ -156,10 +156,7 @@ function getUIFilters() {
     }
   }
 
-  const minProfitInput = document.getElementById('minProfit');
-  const minProfit = minProfitInput ? Number(minProfitInput.value) || 0 : 0;
-
-  return { tiers, qualities, enchantments, locations, maxBudget, maxAgeMinutes, categories, minProfit };
+  return { tiers, qualities, enchantments, locations, maxBudget, maxAgeMinutes, categories };
 }
 
 function generateItemIds(tiers, enchantments, categories = ['weapons', 'armor', 'accessories']) {
@@ -358,39 +355,35 @@ window.calculateAdvisor = async function(forceFetch = false) {
     return;
   }
 
-  try {
-    const filters = getUIFilters();
-    const targetItems = generateItemIds(filters.tiers, filters.enchantments, filters.categories);
-    const totalBatches = Math.ceil(targetItems.length / BATCH_SIZE);
+  const filters = getUIFilters();
+  const targetItems = generateItemIds(filters.tiers, filters.enchantments, filters.categories);
+  const totalBatches = Math.ceil(targetItems.length / BATCH_SIZE);
 
-    if (tableBody) {
-      tableBody.innerHTML = `
-        <div style="padding: 40px; text-align: center; color: #f59e0b;">
-          <div style="font-size: 1.2rem; font-weight: bold; margin-bottom: 8px;">
-            Fetching Fresh Albion Market Data: <span id="searchPercent">0%</span>
-          </div>
-          <div style="color: #94a3b8; font-size: 0.9rem;">
-            Batch progress: <span id="searchBatches">0/${totalBatches}</span>
-          </div>
+  if (tableBody) {
+    tableBody.innerHTML = `
+      <div style="padding: 40px; text-align: center; color: #f59e0b;">
+        <div style="font-size: 1.2rem; font-weight: bold; margin-bottom: 8px;">
+          Fetching Fresh Albion Market Data: <span id="searchPercent">0%</span>
         </div>
-      `;
-    }
+        <div style="color: #94a3b8; font-size: 0.9rem;">
+          Batch progress: <span id="searchBatches">0/${totalBatches}</span>
+        </div>
+      </div>
+    `;
+  }
 
+  try {
     window.cachedMarketData = await fetchAndMergeData(targetItems, filters, (percent, done, total) => {
       const percentEl = document.getElementById('searchPercent');
       const batchesEl = document.getElementById('searchBatches');
       if (percentEl) percentEl.textContent = `${percent}%`;
       if (batchesEl) batchesEl.textContent = `${done}/${total}`;
     });
-
-    window.renderTable();
   } catch (e) {
     console.error("Failed to fetch data inside calculateAdvisor:", e);
-    isFetchingData = false;
-    if (tableBody) {
-      tableBody.innerHTML = `<div style="padding: 40px; text-align: center; color: #ef4444;">Error occurred while fetching data: ${e.message}</div>`;
-    }
   }
+
+  renderTable();
 };
 
 window.renderTable = function() {
@@ -408,7 +401,7 @@ window.renderTable = function() {
   const taxRate = isPremium ? 0.04 : 0.08;
   const setupFee = 0.025;
 
-  const { qualities, locations, maxBudget, maxAgeMinutes, minProfit } = getUIFilters();
+  const { qualities, locations, maxBudget, maxAgeMinutes } = getUIFilters();
   const now = Date.now();
 
   let tradeRoutes = [];
@@ -449,8 +442,7 @@ window.renderTable = function() {
         const netRevenue = sellEntry.sellPrice * (1 - setupFee - taxRate);
         const profit = netRevenue - totalCost;
         
-        // Filter out profits lower than the minimum profit value entered in the box
-        if (profit < minProfit) continue;
+        if (profit <= 0) continue;
 
         const profitMargin = (profit / totalCost) * 100;
 
@@ -589,12 +581,10 @@ function attachUIEventListeners() {
 
   const runBtn = document.getElementById('runBtn');
   if (runBtn) {
-    runBtn.replaceWith(runBtn.cloneNode(true)); // remove old listeners
-    const freshRunBtn = document.getElementById('runBtn');
-    freshRunBtn.addEventListener('click', (e) => {
+    runBtn.onclick = (e) => {
       const forceFetch = e.shiftKey || !window.cachedMarketData || window.cachedMarketData.length === 0;
       window.calculateAdvisor(forceFetch);
-    });
+    };
   }
 }
 
