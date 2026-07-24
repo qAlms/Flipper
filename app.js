@@ -3,7 +3,7 @@ const AODP_EUROPE_URL = "https://europe.albion-online-data.com/api/v2/stats/pric
 
 // --- TUNING CONFIGURATION ---
 const BATCH_SIZE = 50;       // Optimal balance between URL length & server limit
-const CONCURRENCY_LIMIT = 6;  // Parallel network workers
+const CONCURRENCY_LIMIT = 12;  // Parallel network workers
 
 function parseApiDate(dateStr) {
   if (!dateStr || dateStr.startsWith("0001-01-01")) return 0;
