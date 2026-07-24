@@ -142,7 +142,7 @@ function getUIFilters() {
   locations = Array.from(new Set(locations));
   if (locations.length === 0) locations = knownCities;
 
-  const budgetInput = document.getElementById('budget') || document.querySelector('input[type="number"]');
+  const budgetInput = document.getElementById('budget');
   const maxBudget = budgetInput ? Number(budgetInput.value) || Infinity : Infinity;
 
   const maxAgeEl = document.getElementById('maxAge');
@@ -157,7 +157,7 @@ function getUIFilters() {
   }
 
   const minProfitInput = document.getElementById('minProfit');
-  const minProfit = minProfitInput ? Number(minProfitInput.value) : 0;
+  const minProfit = minProfitInput ? Number(minProfitInput.value) || 0 : 0;
 
   return { tiers, qualities, enchantments, locations, maxBudget, maxAgeMinutes, categories, minProfit };
 }
@@ -445,7 +445,7 @@ window.renderTable = function() {
         const netRevenue = sellEntry.sellPrice * (1 - setupFee - taxRate);
         const profit = netRevenue - totalCost;
         
-        // Ensure profit meets the minimum threshold set by the slider
+        // Filter out profits lower than the number input value (and always exclude zero/negative)
         if (profit < Math.max(1, minProfit)) continue;
 
         const profitMargin = (profit / totalCost) * 100;
@@ -549,14 +549,6 @@ window.renderTable = function() {
 };
 
 function attachUIEventListeners() {
-  const minProfitInput = document.getElementById('minProfit');
-  const minProfitLabel = document.getElementById('minProfitLabel');
-  if (minProfitInput && minProfitLabel) {
-    minProfitInput.addEventListener('input', (e) => {
-      minProfitLabel.textContent = Number(e.target.value).toLocaleString();
-    });
-  }
-
   let maxAgeSelect = document.getElementById('maxAge');
   if (!maxAgeSelect) {
     const container = document.querySelector('.top-row-inputs') || document.body;
