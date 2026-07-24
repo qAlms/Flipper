@@ -156,7 +156,10 @@ function getUIFilters() {
     }
   }
 
-  return { tiers, qualities, enchantments, locations, maxBudget, maxAgeMinutes, categories };
+  const minProfitInput = document.getElementById('minProfit');
+  const minProfit = minProfitInput ? Number(minProfitInput.value) : 0;
+
+  return { tiers, qualities, enchantments, locations, maxBudget, maxAgeMinutes, categories, minProfit };
 }
 
 function generateItemIds(tiers, enchantments, categories = ['weapons', 'armor', 'accessories']) {
@@ -401,7 +404,7 @@ window.renderTable = function() {
   const taxRate = isPremium ? 0.04 : 0.08;
   const setupFee = 0.025;
 
-  const { qualities, locations, maxBudget, maxAgeMinutes } = getUIFilters();
+  const { qualities, locations, maxBudget, maxAgeMinutes, minProfit } = getUIFilters();
   const now = Date.now();
 
   let tradeRoutes = [];
@@ -442,7 +445,8 @@ window.renderTable = function() {
         const netRevenue = sellEntry.sellPrice * (1 - setupFee - taxRate);
         const profit = netRevenue - totalCost;
         
-        if (profit <= 0) continue;
+        // Ensure profit meets the minimum threshold set by the slider
+        if (profit < Math.max(1, minProfit)) continue;
 
         const profitMargin = (profit / totalCost) * 100;
 
@@ -545,6 +549,14 @@ window.renderTable = function() {
 };
 
 function attachUIEventListeners() {
+  const minProfitInput = document.getElementById('minProfit');
+  const minProfitLabel = document.getElementById('minProfitLabel');
+  if (minProfitInput && minProfitLabel) {
+    minProfitInput.addEventListener('input', (e) => {
+      minProfitLabel.textContent = Number(e.target.value).toLocaleString();
+    });
+  }
+
   let maxAgeSelect = document.getElementById('maxAge');
   if (!maxAgeSelect) {
     const container = document.querySelector('.top-row-inputs') || document.body;
