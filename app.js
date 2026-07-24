@@ -481,6 +481,19 @@ window.renderTable = function() {
 };
 
 function attachUIEventListeners() {
+  // Automatically inject 'Silver Profit' option into the dropdown if it's missing from HTML
+  const sortBySelect = document.getElementById('sortBy');
+  if (sortBySelect) {
+    const hasProfitOption = Array.from(sortBySelect.options).some(opt => opt.value === 'profit');
+    if (!hasProfitOption) {
+      const profitOption = document.createElement('option');
+      profitOption.value = 'profit';
+      profitOption.textContent = 'Highest Silver Profit';
+      sortBySelect.insertBefore(profitOption, sortBySelect.firstChild);
+      sortBySelect.value = 'profit';
+    }
+  }
+
   const inputs = document.querySelectorAll('input, select');
   inputs.forEach(input => {
     input.addEventListener('change', () => {
