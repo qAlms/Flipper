@@ -1,6 +1,10 @@
 window.cachedMarketData = [];
 const AODP_EUROPE_URL = "https://europe.albion-online-data.com/api/v2/stats/prices/";
 
+// --- TUNING CONFIGURATION ---
+const BATCH_SIZE = 50;       // Optimal balance between URL length & server limit
+const CONCURRENCY_LIMIT = 6;  // Parallel network workers
+
 function parseApiDate(dateStr) {
   if (!dateStr || dateStr.startsWith("0001-01-01")) return 0;
   const utcDateStr = dateStr.endsWith('Z') ? dateStr : dateStr + 'Z';
@@ -18,7 +22,6 @@ function getQualityNumber(val) {
   return Number(val) || 1;
 }
 
-// Helper function to strictly chunk arrays into groups of max size
 function chunkArray(array, chunkSize) {
   const chunks = [];
   for (let i = 0; i < array.length; i += chunkSize) {
@@ -27,7 +30,6 @@ function chunkArray(array, chunkSize) {
   return chunks;
 }
 
-// COMPREHENSIVE CORRECTED ALBION ITEM NAME MAPPING
 const nameMap = {
     // --- CLOTH ARMOR SETS ---
     "ARMOR_CLOTH_SET1": "Scholar Robe",
@@ -446,8 +448,7 @@ function generateItemIds(tiers, enchantments) {
     });
   });
 
-  const uniqueItems = Array.from(new Set(items));
-  return uniqueItems;
+  return Array.from(new Set(items));
 }
 
 async function fetchAndMergeData(rawItemIds, progressCallback) {
@@ -465,29 +466,23 @@ async function fetchAndMergeData(rawItemIds, progressCallback) {
       .filter(Boolean);
   }
 
-  // Remove duplicates
   cleanItemIds = Array.from(new Set(cleanItemIds));
-
   if (cleanItemIds.length === 0) return [];
 
-  const BATCH_SIZE = 20; // Hard limit of 20 items per request
-  const CONCURRENCY_LIMIT = 5;
-  
-  // Strictly chunk individual items into groups of max 20
+  // Strictly chunk individual items into groups of max 50
   const batches = chunkArray(cleanItemIds, BATCH_SIZE);
   const allResults = [];
   const queue = [...batches];
   let completed = 0;
 
   console.log(`[DEBUG] Total unique items to fetch: ${cleanItemIds.length}`);
-  console.log(`[DEBUG] Split into ${batches.length} strict batches of max 20 items each.`);
+  console.log(`[DEBUG] Optimized into ${batches.length} batches of max ${BATCH_SIZE} items with ${CONCURRENCY_LIMIT} parallel workers.`);
 
   async function worker() {
     while (queue.length > 0) {
       const batch = queue.shift();
       if (!batch || batch.length === 0) break;
 
-      // Double check chunk size
       const itemString = batch.join(",");
       const requestUrl = `${AODP_EUROPE_URL}${itemString}.json`;
 
@@ -542,6 +537,7 @@ window.calculateAdvisor = async function() {
   const tableBody = document.getElementById('tableBody');
   const { tiers, enchantments } = getUIFilters();
   const targetItems = generateItemIds(tiers, enchantments);
+  const totalBatches = Math.ceil(targetItems.length / BATCH_SIZE);
 
   if (tableBody) {
     tableBody.innerHTML = `
@@ -550,7 +546,7 @@ window.calculateAdvisor = async function() {
           Searching Albion Europe Database: <span id="searchPercent">0%</span>
         </div>
         <div style="color: #94a3b8; font-size: 0.9rem;">
-          Batch progress: <span id="searchBatches">0/${Math.ceil(targetItems.length / 20)}</span>
+          Batch progress: <span id="searchBatches">0/${totalBatches}</span>
         </div>
       </div>
     `;
