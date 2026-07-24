@@ -447,30 +447,47 @@ function generateItemIds(tiers, enchantments) {
   });
 
   const uniqueItems = Array.from(new Set(items));
-  console.log(`[DEBUG] Generated ${uniqueItems.length} total item IDs to query.`);
   return uniqueItems;
 }
 
-async function fetchAndMergeData(itemIds, progressCallback) {
-  if (!itemIds || itemIds.length === 0) return [];
+async function fetchAndMergeData(rawItemIds, progressCallback) {
+  if (!rawItemIds) return [];
 
-  const BATCH_SIZE = 20; // Hard cutoff of 20 items per HTTP request
+  // SANITIZER: Guarantees input is broken down into clean, individual string IDs
+  let cleanItemIds = [];
+  if (typeof rawItemIds === 'string') {
+    cleanItemIds = rawItemIds.split(',').map(s => s.trim()).filter(Boolean);
+  } else if (Array.isArray(rawItemIds)) {
+    cleanItemIds = rawItemIds
+      .flat(Infinity)
+      .flatMap(item => typeof item === 'string' ? item.split(',') : item)
+      .map(s => String(s).trim())
+      .filter(Boolean);
+  }
+
+  // Remove duplicates
+  cleanItemIds = Array.from(new Set(cleanItemIds));
+
+  if (cleanItemIds.length === 0) return [];
+
+  const BATCH_SIZE = 20; // Hard limit of 20 items per request
   const CONCURRENCY_LIMIT = 5;
   
-  // Strictly chunk master item list into small batches of 20
-  const batches = chunkArray(itemIds, BATCH_SIZE);
+  // Strictly chunk individual items into groups of max 20
+  const batches = chunkArray(cleanItemIds, BATCH_SIZE);
   const allResults = [];
   const queue = [...batches];
   let completed = 0;
 
-  console.log(`[DEBUG] Executing ${batches.length} strict batches of max 20 items each.`);
+  console.log(`[DEBUG] Total unique items to fetch: ${cleanItemIds.length}`);
+  console.log(`[DEBUG] Split into ${batches.length} strict batches of max 20 items each.`);
 
   async function worker() {
     while (queue.length > 0) {
       const batch = queue.shift();
-      if (!batch) break;
+      if (!batch || batch.length === 0) break;
 
-      // Join ONLY the 20 items in this chunk
+      // Double check chunk size
       const itemString = batch.join(",");
       const requestUrl = `${AODP_EUROPE_URL}${itemString}.json`;
 
